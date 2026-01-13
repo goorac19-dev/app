@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Goorac | Quantum Chat</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
@@ -11,85 +11,112 @@
     <style>
         :root {
             --bg: #000;
-            --neon: #00d2ff;
-            --glass: rgba(255, 255, 255, 0.05);
+            --accent: #00d2ff;
             --border: rgba(255, 255, 255, 0.1);
-            --my-bubble: linear-gradient(135deg, #0084ff, #00d2ff);
+            --sent: #00d2ff;
+            --received: #1a1a1a;
         }
 
-        body {
-            background: var(--bg); color: white; margin: 0;
-            font-family: 'Inter', -apple-system, sans-serif;
-            display: flex; flex-direction: column; height: 100vh;
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        html, body { 
+            height: 100%; margin: 0; padding: 0; 
+            background: var(--bg); color: white;
+            font-family: -apple-system, system-ui, sans-serif;
+            overflow: hidden; position: fixed; width: 100%;
+        }
+
+        .app-container {
+            display: flex; flex-direction: column;
+            height: 100vh; height: -webkit-fill-available;
         }
 
         header {
-            padding: 12px 20px;
-            background: rgba(0,0,0,0.8);
-            backdrop-filter: blur(20px);
+            padding: 12px 15px; background: rgba(0,0,0,0.95);
             border-bottom: 1px solid var(--border);
-            display: flex; align-items: center; z-index: 100;
+            display: flex; align-items: center; gap: 12px; z-index: 10;
         }
-        .back-btn { font-size: 1.8rem; margin-right: 15px; cursor: pointer; color: var(--neon); line-height: 1; }
-        .h-pfp { width: 40px; height: 40px; border-radius: 12px; object-fit: cover; margin-right: 12px; }
-        .h-name { font-weight: 700; font-size: 1rem; display: flex; align-items: center; gap: 5px; }
-        .v-badge { height: 13px; width: 13px; }
+        .h-pfp { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid var(--accent); }
+        .h-name { font-weight: 700; font-size: 1rem; }
+        .h-status { font-size: 0.65rem; letter-spacing: 1px; transition: 0.3s; }
 
         #chat-flow {
-            flex: 1; overflow-y: auto; padding: 20px;
-            display: flex; flex-direction: column; gap: 8px;
-            background: #000;
+            flex: 1; overflow-y: auto; padding: 20px 15px;
+            display: flex; flex-direction: column; gap: 12px;
+            background: #000; -webkit-overflow-scrolling: touch;
+        }
+
+        .msg-wrap { display: flex; flex-direction: column; max-width: 85%; position: relative; }
+        .sent { align-self: flex-end; }
+        .received { align-self: flex-start; }
+
+        /* REPLY BUBBLE STYLE */
+        .reply-content {
+            background: rgba(0,0,0,0.15); border-left: 3px solid var(--accent);
+            padding: 6px 10px; border-radius: 8px; font-size: 0.75rem; 
+            margin-bottom: 6px; opacity: 0.8;
         }
 
         .bubble {
-            max-width: 75%; padding: 10px 14px; border-radius: 18px;
-            font-size: 0.95rem; line-height: 1.4; position: relative;
-            animation: fadeIn 0.2s ease;
+            padding: 12px 16px; border-radius: 20px; font-size: 0.95rem;
+            line-height: 1.4; word-wrap: break-word; position: relative;
         }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .sent .bubble { background: var(--sent); color: #000; border-bottom-right-radius: 4px; font-weight: 500; }
+        .received .bubble { background: var(--received); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
 
-        .sent {
-            align-self: flex-end; background: var(--my-bubble);
-            color: #000; font-weight: 500; border-bottom-right-radius: 2px;
-        }
-        .received {
-            align-self: flex-start; background: #222;
-            border: 1px solid var(--border); color: white;
-            border-bottom-left-radius: 2px;
+        #reply-dock {
+            display: none; background: #0a0a0a; padding: 10px 15px;
+            border-top: 2px solid var(--accent); justify-content: space-between; align-items: center;
         }
 
-        .time { font-size: 0.65rem; opacity: 0.5; margin-top: 4px; display: block; text-align: right; }
+        .indicator { height: 20px; padding: 0 15px; font-size: 0.75rem; color: var(--accent); font-style: italic; }
 
+        .input-area {
+            background: #000; border-top: 1px solid var(--border);
+            padding: 10px 15px 30px; display: flex; align-items: center; gap: 10px;
+        }
         .input-box {
-            padding: 15px 20px 30px; background: #000; border-top: 1px solid var(--border);
-            display: flex; align-items: center; gap: 10px;
+            flex: 1; background: #121212; border: 1px solid var(--border);
+            border-radius: 25px; padding: 0 15px;
         }
         .msg-input {
-            flex: 1; background: #111; border: 1px solid var(--border);
-            padding: 12px 16px; border-radius: 20px; color: white; outline: none;
+            width: 100%; background: transparent; border: none; color: white;
+            padding: 12px 0; outline: none; font-size: 1rem;
         }
         .send-btn { 
-            background: var(--neon); color: black; border: none; 
-            padding: 10px 20px; border-radius: 20px; font-weight: 800; cursor: pointer;
+            background: var(--accent); border: none; width: 42px; height: 42px; 
+            border-radius: 50%; font-weight: 900; cursor: pointer; display: flex;
+            align-items: center; justify-content: center;
         }
     </style>
 </head>
-<body oncontextmenu="return false;">
+<body>
 
-<header>
-    <div class="back-btn" onclick="location.href='messages.html'">‹</div>
-    <img id="header-pfp" src="" class="h-pfp">
-    <div class="h-info">
-        <div class="h-name" id="header-name">Connecting...</div>
-        <div style="font-size: 0.6rem; color: var(--neon); letter-spacing: 1px;">QUANTUM ENCRYPTED</div>
+<div class="app-container">
+    <header>
+        <div onclick="location.href='messages.html'" style="font-size: 1.8rem; cursor: pointer;">‹</div>
+        <img id="h-pfp" src="" class="h-pfp">
+        <div>
+            <div class="h-name" id="h-name">...</div>
+            <div class="h-status" id="h-status">CHECKING...</div>
+        </div>
+    </header>
+
+    <div id="chat-flow"></div>
+
+    <div id="typing-indicator" class="indicator"></div>
+
+    <div id="reply-dock">
+        <div id="reply-text" style="font-size:0.8rem; color:#888; overflow:hidden; text-overflow:ellipsis;"></div>
+        <div onclick="cancelReply()" style="color:var(--accent); font-weight:bold; cursor:pointer; padding:5px;">✕</div>
     </div>
-</header>
 
-<div id="chat-flow"></div>
-
-<div class="input-box">
-    <input type="text" id="m-input" class="msg-input" placeholder="Message..." autocomplete="off">
-    <button class="send-btn" onclick="sendMsg()">SEND</button>
+    <div class="input-area">
+        <div class="input-box">
+            <input type="text" id="m-input" class="msg-input" placeholder="Quantum message..." autocomplete="off">
+        </div>
+        <button class="send-btn" onclick="sendMsg()">➤</button>
+    </div>
 </div>
 
 <script>
@@ -105,104 +132,127 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const auth = firebase.auth();
-    const V_URL = "https://upload.wikimedia.org/wikipedia/commons/e/e4/Twitter_Verified_Badge.svg";
 
     const params = new URLSearchParams(window.location.search);
     const targetUsername = params.get('user');
-    let myUid, targetUid, chatId;
-    let displayedMessages = new Set(); // THE FIX: Prevents Duplication
+    let myUid, targetUid, chatId, replyingTo = null;
+    let displayedMessages = new Set();
 
     auth.onAuthStateChanged(user => {
         if (user) {
             myUid = user.uid;
+            db.collection("users").doc(myUid).update({ status: "online" });
             setupChat();
         } else { location.href='login.html'; }
     });
 
     async function setupChat() {
-        // 1. Get Target User Info
-        const userSnap = await db.collection("users").where("username", "==", targetUsername).get();
-        if (userSnap.empty) return;
+        const snap = await db.collection("users").where("username", "==", targetUsername).get();
+        if (snap.empty) return;
         
-        const data = userSnap.docs[0].data();
-        targetUid = userSnap.docs[0].id;
+        const targetData = snap.docs[0].data();
+        targetUid = snap.docs[0].id;
         chatId = myUid < targetUid ? `${myUid}_${targetUid}` : `${targetUid}_${myUid}`;
 
-        // 2. UI Header Update
-        document.getElementById('header-name').innerHTML = `${data.username} ${data.verified ? `<img src="${V_URL}" class="v-badge">` : ''}`;
-        document.getElementById('header-pfp').src = data.photoURL;
+        document.getElementById('h-name').innerText = targetData.username;
+        document.getElementById('h-pfp').src = targetData.photoURL || 'https://via.placeholder.com/150';
 
-        // 3. Mark chat as "seen"
-        db.collection("chats").doc(chatId).update({ seen: true, lastSender: targetUid === myUid ? '' : data.uid }).catch(() => {});
+        // REAL-TIME STATUS FIX
+        db.collection("users").doc(targetUid).onSnapshot(doc => {
+            const u = doc.data();
+            const statusEl = document.getElementById('h-status');
+            if (u.status === "online") {
+                statusEl.innerHTML = `<span style="color: #00ff00;">●</span> ACTIVE NOW`;
+            } else {
+                statusEl.innerHTML = `<span style="color: #555;">●</span> OFFLINE`;
+            }
+        });
 
-        // 4. THE SYNC FIX: Single Stream Listener
-        db.collection("chats").doc(chatId).collection("messages")
-          .orderBy("timestamp", "asc")
-          .limitToLast(40)
-          .onSnapshot(snapshot => {
-              snapshot.docChanges().forEach(change => {
-                  if (change.type === "added") {
-                      renderMessage(change.doc.data(), change.doc.id);
-                  }
-              });
-              scrollToBottom();
-          });
+        // Listen for messages
+        db.collection("chats").doc(chatId).collection("messages").orderBy("timestamp", "asc").onSnapshot(s => {
+            s.docChanges().forEach(change => {
+                if (change.type === "added") render(change.doc.data(), change.doc.id);
+            });
+            scrollToBottom();
+        });
+
+        // Typing Indicator
+        db.collection("chats").doc(chatId).onSnapshot(doc => {
+            if(doc.data()?.typing === targetUid) {
+                document.getElementById('typing-indicator').innerText = 'typing...';
+            } else {
+                document.getElementById('typing-indicator').innerText = '';
+            }
+        });
     }
 
-    function renderMessage(m, id) {
-        if (displayedMessages.has(id)) return; // Duplicate Guard
+    function render(m, id) {
+        if (displayedMessages.has(id)) return;
         displayedMessages.add(id);
 
         const flow = document.getElementById('chat-flow');
         const side = m.sender === myUid ? 'sent' : 'received';
-        const time = m.timestamp ? m.timestamp.toDate().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : "pending";
-        
         const div = document.createElement('div');
-        div.className = `bubble ${side}`;
-        div.innerHTML = `${m.text} <span class="time">${time}</span>`;
+        div.className = `msg-wrap ${side}`;
         
+        // Tap message to Reply
+        div.onclick = () => {
+            replyingTo = m.text;
+            document.getElementById('reply-dock').style.display = 'flex';
+            document.getElementById('reply-text').innerText = `Replying to: ${m.text}`;
+            document.getElementById('m-input').focus();
+        };
+
+        let replyHtml = m.replyTo ? `<div class="reply-content">${m.replyTo}</div>` : '';
+        div.innerHTML = `<div class="bubble">${replyHtml}${m.text}</div>`;
         flow.appendChild(div);
     }
+
+    function cancelReply() {
+        replyingTo = null;
+        document.getElementById('reply-dock').style.display = 'none';
+    }
+
+    async function sendMsg() {
+        const input = document.getElementById('m-input');
+        const text = input.value.trim();
+        if (!text) return;
+
+        const serverTime = firebase.firestore.FieldValue.serverTimestamp();
+        const msgData = { text, sender: myUid, timestamp: serverTime, replyTo: replyingTo };
+
+        input.value = "";
+        cancelReply();
+        input.focus(); // STABILIZE KEYBOARD
+
+        const batch = db.batch();
+        batch.set(db.collection("chats").doc(chatId).collection("messages").doc(), msgData);
+        batch.set(db.collection("chats").doc(chatId), {
+            lastMessage: text,
+            lastTimestamp: serverTime,
+            lastSender: myUid,
+            typing: null
+        }, { merge: true });
+
+        await batch.commit();
+    }
+
+    // Keyboard & Typing Detection
+    document.getElementById('m-input').addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            sendMsg();
+        }
+        db.collection("chats").doc(chatId).update({ typing: myUid });
+    });
 
     function scrollToBottom() {
         const flow = document.getElementById('chat-flow');
         flow.scrollTop = flow.scrollHeight;
     }
 
-    async function sendMsg() {
-        const input = document.getElementById('m-input');
-        const text = input.value.trim();
-        if (!text || !chatId) return;
-        input.value = "";
-
-        const batch = db.batch();
-        const msgRef = db.collection("chats").doc(chatId).collection("messages").doc();
-        const chatRef = db.collection("chats").doc(chatId);
-
-        const serverTime = firebase.firestore.FieldValue.serverTimestamp();
-
-        // Add the message
-        batch.set(msgRef, {
-            text: text,
-            sender: myUid,
-            timestamp: serverTime
-        });
-
-        // Update the chat preview (for the messages list)
-        batch.set(chatRef, {
-            participants: [myUid, targetUid],
-            lastMessage: text,
-            lastTimestamp: serverTime,
-            lastSender: myUid,
-            seen: false
-        }, { merge: true });
-
-        await batch.commit();
-    }
-
-    // Enter key to send
-    document.getElementById('m-input').addEventListener('keypress', e => {
-        if (e.key === 'Enter') sendMsg();
+    window.addEventListener('beforeunload', () => {
+        if(myUid) db.collection("users").doc(myUid).update({ status: "offline" });
     });
 </script>
 </body>

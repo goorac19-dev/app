@@ -13,88 +13,82 @@
             --bg: #000;
             --accent: #00d2ff;
             --border: rgba(255, 255, 255, 0.1);
-            --glass: rgba(255, 255, 255, 0.06);
             --text-dim: #888;
         }
 
         body {
             background: var(--bg); color: white; margin: 0;
-            font-family: 'Inter', -apple-system, sans-serif;
-            padding-bottom: 110px; overflow-x: hidden;
+            font-family: -apple-system, system-ui, sans-serif;
+            padding-bottom: 90px;
+            overflow-x: hidden;
         }
 
-        /* Modern Search Header */
         header {
-            position: sticky; top: 0; background: rgba(0,0,0,0.9);
-            backdrop-filter: blur(25px); padding: 15px 20px; z-index: 1000;
-            border-bottom: 1px solid var(--border);
+            position: sticky; top: 0; background: #000;
+            padding: 15px 20px; display: flex; justify-content: space-between;
+            align-items: center; border-bottom: 1px solid var(--border); z-index: 1000;
         }
-        .search-box {
-            background: var(--glass); border: 1px solid var(--border);
-            border-radius: 12px; display: flex; align-items: center;
-            padding: 10px 15px; gap: 10px;
-        }
-        .search-box input {
-            background: transparent; border: none; color: white;
-            outline: none; width: 100%; font-size: 0.95rem;
+        .header-logo { font-weight: 900; font-size: 1.4rem; letter-spacing: -1px; }
+
+        .search-wrap { padding: 12px 20px; }
+        .search-input {
+            width: 100%; background: #111; border: 1px solid var(--border);
+            padding: 12px 15px; border-radius: 12px; color: white; outline: none; box-sizing: border-box;
+            font-size: 0.95rem;
         }
 
-        /* Search Results Overlay */
-        #search-results {
-            position: absolute; top: 75px; left: 0; right: 0;
-            background: #000; z-index: 2000; min-height: 100vh;
-            display: none; padding: 10px 0;
-        }
-
-        /* Chat List */
-        .section-label { padding: 20px 20px 10px; font-size: 0.75rem; color: var(--accent); font-weight: 800; letter-spacing: 2px; }
-        
         .chat-item { 
-            display: flex; align-items: center; padding: 12px 20px; 
-            cursor: pointer; transition: 0.2s;
+            display: flex; align-items: center; padding: 15px 20px; 
+            cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05);
         }
-        .chat-item:active { background: var(--glass); }
-        .chat-pfp { width: 50px; height: 50px; border-radius: 15px; object-fit: cover; margin-right: 15px; }
-        
-        .chat-info { flex: 1; min-width: 0; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px; }
+        .chat-pfp { width: 55px; height: 55px; border-radius: 50%; margin-right: 15px; object-fit: cover; }
+        .chat-info { flex: 1; min-width: 0; }
+        .chat-top-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
         .u-name { font-weight: 700; font-size: 1rem; display: flex; align-items: center; gap: 5px; }
-        .last-msg { color: var(--text-dim); font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .v-badge { height: 13px; width: 13px; }
-
-        /* Floating Nav Dock */
-        .nav-dock {
-            position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%);
-            background: rgba(15, 15, 15, 0.85); backdrop-filter: blur(20px);
-            border: 1px solid var(--border); border-radius: 30px;
-            display: flex; align-items: center; padding: 10px 20px; gap: 25px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8); z-index: 3000;
+        .v-badge { height: 14px; width: 14px; }
+        .last-msg { color: var(--text-dim); font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 75%; }
+        
+        .follow-btn { 
+            background: var(--accent); color: #000; border: none; 
+            padding: 5px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 800; cursor: pointer;
         }
-        .nav-btn { font-size: 1.5rem; color: #555; text-decoration: none; transition: 0.3s; }
-        .nav-btn.active { color: var(--accent); transform: scale(1.1); }
+        .unread-dot { width: 10px; height: 10px; background: var(--accent); border-radius: 50%; }
+
+        /* UNIFIED NAVIGATION - ORDER: HOME | MESSAGES | SEARCH | PROFILE */
+        nav {
+            position: fixed; bottom: 0; width: 100%; background: #000;
+            display: flex; justify-content: space-around; align-items: center;
+            padding: 15px 0 25px; border-top: 1px solid var(--border); z-index: 2000;
+        }
+        .nav-icon { font-size: 1.5rem; color: #555; text-decoration: none; transition: 0.2s; }
+        .nav-icon.active { color: var(--accent); }
+
+        #search-results { display: none; background: #000; min-height: 100vh; }
     </style>
 </head>
 <body>
 
 <header>
-    <div class="search-box">
-        <span>🔍</span>
-        <input type="text" id="global-search" placeholder="Search users or following..." oninput="doSearch(this.value)">
-    </div>
+    <div class="header-logo">GOORAC</div>
 </header>
+
+<div class="search-wrap">
+    <input type="text" class="search-input" id="main-search" placeholder="Search people..." oninput="searchUsers(this.value)">
+</div>
 
 <div id="search-results"></div>
 
-<div id="main-feed">
-    <div class="section-label">RECENT CHATS</div>
+<div id="inbox-content">
+    <div style="padding: 10px 20px; font-size: 0.7rem; color: #555; font-weight: 800; letter-spacing: 1.5px;">RECENT TRANSMISSIONS</div>
     <div id="chats-list"></div>
 </div>
 
-<div class="nav-dock">
-    <a href="home.html" class="nav-btn">🏠</a>
-    <a href="add-contact.html" class="nav-btn">🔍</a>
-    <a href="messages.html" class="nav-btn active">💬</a>
-    <a href="profile.html" class="nav-btn">👤</a>
-</div>
+<nav>
+    <a href="home.html" class="nav-icon">🏠</a>
+    <a href="messages.html" class="nav-icon active">💬</a>
+    <a href="add-contact.html" class="nav-icon">🔍</a>
+    <a href="profile.html" class="nav-icon">👤</a>
+</nav>
 
 <script>
     const firebaseConfig = {
@@ -112,89 +106,98 @@
     const V_URL = "https://upload.wikimedia.org/wikipedia/commons/e/e4/Twitter_Verified_Badge.svg";
 
     let myUid = "";
+    let myFollowingList = [];
 
     auth.onAuthStateChanged(user => {
         if (user) {
             myUid = user.uid;
-            listenChats();
-        } else { location.href = 'login.html'; }
+            fetchUserData();
+            listenToInbox();
+        } else { window.location.href = 'login.html'; }
     });
 
-    // --- SEARCH ANY USER ---
-    function doSearch(val) {
-        const resultsBox = document.getElementById('search-results');
-        const mainFeed = document.getElementById('main-feed');
-        
-        if (val.length < 1) {
-            resultsBox.style.display = 'none';
-            mainFeed.style.display = 'block';
-            return;
-        }
-
-        resultsBox.style.display = 'block';
-        mainFeed.style.display = 'none';
-
-        db.collection("users")
-            .where("username", ">=", val.toLowerCase())
-            .where("username", "<=", val.toLowerCase() + "\uf8ff")
-            .limit(10)
-            .get()
-            .then(snap => {
-                resultsBox.innerHTML = snap.docs.map(doc => {
-                    const u = doc.data();
-                    return `
-                        <div class="chat-item" onclick="location.href='chat.html?user=${u.username}'">
-                            <img src="${u.photoURL || 'https://via.placeholder.com/100'}" class="chat-pfp">
-                            <div class="chat-info">
-                                <div class="u-name">${u.username} ${u.verified ? `<img src="${V_URL}" class="v-badge">` : ''}</div>
-                                <div style="color:#555; font-size:0.8rem;">Tap to message</div>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            });
+    async function fetchUserData() {
+        const userDoc = await db.collection("users").doc(myUid).get();
+        myFollowingList = userDoc.data()?.following || [];
     }
 
-    // --- RECENT CHATS LIST ---
-    function listenChats() {
-        db.collection("chats")
-            .where("participants", "array-contains", myUid)
-            .onSnapshot(async snap => {
-                const list = document.getElementById('chats-list');
-                const sortedDocs = snap.docs.sort((a, b) => 
-                    (b.data().lastTimestamp?.seconds || 0) - (a.data().lastTimestamp?.seconds || 0)
-                );
+    function listenToInbox() {
+        db.collection("chats").where("participants", "array-contains", myUid)
+        .onSnapshot(async snap => {
+            const list = document.getElementById('chats-list');
+            const sortedDocs = snap.docs.sort((a,b) => (b.data().lastTimestamp?.seconds || 0) - (a.data().lastTimestamp?.seconds || 0));
 
-                let html = "";
-                for (const d of sortedDocs) {
-                    const chat = d.data();
-                    const otherUid = chat.participants.find(id => id !== myUid);
-                    
-                    const uDoc = await db.collection("users").doc(otherUid).get();
-                    const u = uDoc.data();
-                    if (!u) continue;
+            let html = "";
+            for (const d of sortedDocs) {
+                const chat = d.data();
+                const otherUid = chat.participants.find(id => id !== myUid);
+                const otherDoc = await db.collection("users").doc(otherUid).get();
+                const u = otherDoc.data();
+                if(!u) continue;
 
-                    const isUnread = (chat.lastSender !== myUid && !chat.seen);
+                const isUnread = (chat.lastSender !== myUid && !chat.seen);
+                const amIFollowing = myFollowingList.includes(otherUid);
 
-                    html += `
-                        <div class="chat-item" onclick="location.href='chat.html?user=${u.username}'">
-                            <img src="${u.photoURL || 'https://via.placeholder.com/100'}" class="chat-pfp">
-                            <div class="chat-info">
-                                <div class="u-name">
-                                    ${u.username} ${u.verified ? `<img src="${V_URL}" class="v-badge">` : ''}
+                html += `
+                    <div class="chat-item" onclick="location.href='chat.html?user=${u.username}'">
+                        <img src="${u.photoURL || 'https://via.placeholder.com/150'}" class="chat-pfp">
+                        <div class="chat-info">
+                            <div class="chat-top-row">
+                                <span class="u-name">${u.username} ${u.verified ? `<img src="${V_URL}" class="v-badge">` : ''}</span>
+                                <span style="font-size:0.7rem; color:#444;">${chat.lastTimestamp ? formatTime(chat.lastTimestamp.toDate()) : ''}</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <div class="last-msg" style="${isUnread ? 'color:#fff; font-weight:700;' : ''}">
+                                    ${chat.lastMessage || 'New connection started'}
                                 </div>
-                                <div style="display:flex; justify-content:space-between; align-items:center;">
-                                    <div class="last-msg" style="${isUnread ? 'color:#fff; font-weight:700' : ''}">
-                                        ${chat.lastMessage || 'New connection...'}
-                                    </div>
-                                    ${isUnread ? '<div class="unread-dot"></div>' : ''}
+                                <div style="display:flex; align-items:center; gap:10px;">
+                                    ${!amIFollowing ? `<button class="follow-btn" onclick="followUser(event, '${otherUid}')">Follow</button>` : ''}
+                                    ${isUnread ? `<div class="unread-dot"></div>` : ''}
                                 </div>
                             </div>
                         </div>
-                    `;
-                }
-                list.innerHTML = html;
-            });
+                    </div>
+                `;
+            }
+            list.innerHTML = html || "<p style='text-align:center; padding:50px; color:#444;'>No transmissions found.</p>";
+        });
+    }
+
+    async function followUser(e, uid) {
+        e.stopPropagation();
+        await db.collection("users").doc(myUid).update({
+            following: firebase.firestore.FieldValue.arrayUnion(uid)
+        });
+        myFollowingList.push(uid);
+        listenToInbox();
+    }
+
+    function searchUsers(val) {
+        const results = document.getElementById('search-results');
+        const content = document.getElementById('inbox-content');
+        if(val.length < 1) { results.style.display = 'none'; content.style.display = 'block'; return; }
+        results.style.display = 'block'; content.style.display = 'none';
+
+        db.collection("users").where("username", ">=", val.toLowerCase()).limit(10).get().then(snap => {
+            results.innerHTML = snap.docs.map(doc => {
+                const u = doc.data();
+                return `
+                    <div class="chat-item" onclick="location.href='chat.html?user=${u.username}'">
+                        <img src="${u.photoURL}" class="chat-pfp" style="width:40px; height:40px;">
+                        <div class="chat-info">
+                            <div class="u-name">${u.username}</div>
+                            <div style="font-size:0.8rem; color:#555;">Start messaging...</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        });
+    }
+
+    function formatTime(date) {
+        const now = new Date();
+        if(date.toDateString() === now.toDateString()) return date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+        return date.toLocaleDateString([], {month:'short', day:'numeric'});
     }
 </script>
 </body>
