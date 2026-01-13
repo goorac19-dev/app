@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Goorac | Secure Login</title>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <style>
+        /* Modern Dark Theme */
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .card {
+            background: #1e293b;
+            padding: 2.5rem;
+            border-radius: 1.25rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            max-width: 350px;
+            text-align: center;
+            border: 1px solid #334155;
+        }
+
+        h1 { margin-bottom: 0.5rem; font-size: 1.8rem; }
+        p { color: #94a3b8; font-size: 0.9rem; margin-bottom: 2rem; }
+
+        .google-btn {
+            background: #ffffff;
+            color: #1e293b;
+            border: none;
+            padding: 14px 20px;
+            border-radius: 0.75rem;
+            width: 100%;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: 0.2s;
+        }
+
+        .google-btn:hover { background: #e2e8f0; }
+
+        #status {
+            margin-top: 1.5rem;
+            font-size: 0.85rem;
+            color: #38bdf8; /* Accent color */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h1>Goorac</h1>
+        <p>Sign in to continue to your dashboard</p>
+        
+        <button id="loginBtn" class="google-btn">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20" height="20">
+            Continue with Google
+        </button>
+
+        <div id="status">Ready</div>
+    </div>
+
+    <script>
+        // 2. Your Goorac Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCFzAEHC5KLiO2DEkVtoTlFn9zeCQrwImE",
+            authDomain: "goorac-c3b59.firebaseapp.com",
+            projectId: "goorac-c3b59",
+            storageBucket: "goorac-c3b59.firebasestorage.app",
+            messagingSenderId: "746746595332",
+            appId: "1:746746595332:web:d3f8527d27fe8ca2530d51"
+        };
+
+        // 3. Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // 4. The Logic
+        document.getElementById('loginBtn').onclick = function() {
+            const statusMsg = document.getElementById('status');
+            statusMsg.innerText = "Connecting to Google...";
+
+            const provider = new firebase.auth.GoogleAuthProvider();
+
+            auth.signInWithPopup(provider)
+                .then((result) => {
+                    const user = result.user;
+                    statusMsg.innerText = "Checking if profile exists...";
+
+                    // Check Firestore for a document in the 'users' collection with the ID of the user's UID
+                    db.collection("users").doc(user.uid).get().then((doc) => {
+                        if (doc.exists) {
+                            // CASE: User exists -> Go to Home
+                            statusMsg.innerText = "Welcome back! Going home...";
+                            window.location.href = "home.html";
+                        } else {
+                            // CASE: User does not exist -> Go to Setup
+                            statusMsg.innerText = "New user! Redirecting to setup...";
+                            window.location.href = "setup.html";
+                        }
+                    }).catch((error) => {
+                        statusMsg.innerText = "Database Error: " + error.message;
+                        console.error("Firestore Error:", error);
+                    });
+                })
+                .catch((error) => {
+                    statusMsg.innerText = "Auth Error: " + error.message;
+                    console.error("Auth Error:", error);
+                });
+        };
+    </script>
+</body>
+</html>

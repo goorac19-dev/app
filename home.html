@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Goorac | Home</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <style>
+        :root {
+            --bg: #000;
+            --accent: #00d2ff;
+            --card: #111;
+            --border: rgba(255,255,255,0.1);
+        }
+
+        body {
+            background-color: var(--bg);
+            color: white;
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding-bottom: 80px;
+        }
+
+        header {
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            border-bottom: 1px solid var(--border);
+            z-index: 100;
+        }
+
+        .logo { font-size: 1.5rem; font-weight: 900; color: var(--accent); }
+        .header-pfp { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; }
+
+        /* Home Content Area */
+        .content {
+            padding: 20px;
+            text-align: center;
+        }
+
+        .welcome-card {
+            background: linear-gradient(135deg, #111, #000);
+            border: 1px solid var(--border);
+            padding: 40px 20px;
+            border-radius: 30px;
+            margin-top: 20px;
+        }
+
+        .welcome-card h1 { margin: 0; font-size: 1.8rem; }
+        .welcome-card p { color: #888; margin-top: 10px; }
+
+        /* Bottom Navigation Bar */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(20px);
+            display: flex;
+            justify-content: space-around;
+            padding: 15px 0;
+            border-top: 1px solid var(--border);
+            z-index: 1000;
+        }
+
+        .nav-item {
+            text-decoration: none;
+            color: #555;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 0.7rem;
+            gap: 5px;
+        }
+
+        .nav-item.active { color: var(--accent); }
+        .nav-item i { font-size: 1.6rem; font-style: normal; }
+
+        #loader {
+            position: fixed; inset: 0; background: #000;
+            display: flex; justify-content: center; align-items: center; z-index: 9999;
+        }
+    </style>
+</head>
+<body>
+
+<div id="loader">Loading Goorac...</div>
+
+<header>
+    <div class="logo">Goorac</div>
+    <img id="header-pfp" src="" class="header-pfp" onclick="window.location.href='profile.html'">
+</header>
+
+<div class="content">
+    <div class="welcome-card">
+        <h1 id="welcome-name">Hello!</h1>
+        <p>Welcome to your Goorac dashboard. Stay connected with your global ID.</p>
+    </div>
+    
+    <div style="margin-top: 30px; color: #444;">
+        <p>No new updates in your area.</p>
+    </div>
+</div>
+
+<nav class="bottom-nav">
+    <a href="home.html" class="nav-item active">
+        <i>🏠</i><span>Home</span>
+    </a>
+    <a href="messages.html" class="nav-item">
+        <i>💬</i><span>Messages</span>
+    </a>
+    <a href="add-contact.html" class="nav-item">
+        <i>🔍</i><span>Search</span>
+    </a>
+    <a href="profile.html" class="nav-item">
+        <i>👤</i><span>Profile</span>
+    </a>
+</nav>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyCFzAEHC5KLiO2DEkVtoTlFn9zeCQrwImE",
+        authDomain: "goorac-c3b59.firebaseapp.com",
+        projectId: "goorac-c3b59",
+        storageBucket: "goorac-c3b59.firebasestorage.app",
+        messagingSenderId: "746746595332",
+        appId: "1:746746595332:web:d3f8527d27fe8ca2530d51"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    auth.onAuthStateChanged(async (user) => {
+        if (user) {
+            const doc = await db.collection("users").doc(user.uid).get();
+            if (doc.exists) {
+                const data = doc.data();
+                document.getElementById('welcome-name').innerText = "Hello, " + data.name + "!";
+                document.getElementById('header-pfp').src = data.photoURL;
+                document.getElementById('loader').style.display = 'none';
+            } else {
+                window.location.href = "setup.html";
+            }
+        } else {
+            window.location.href = "login.html";
+        }
+    });
+</script>
+
+</body>
+</html>

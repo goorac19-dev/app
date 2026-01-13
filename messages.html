@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Goorac | Messages</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <style>
+        :root {
+            --bg: #000;
+            --accent: #00d2ff;
+            --border: rgba(255, 255, 255, 0.12);
+            --text-dim: #8e8e8e;
+        }
+
+        body {
+            background: var(--bg); color: white; margin: 0;
+            font-family: -apple-system, system-ui, sans-serif;
+            padding-bottom: 80px; overflow-x: hidden;
+        }
+
+        /* Header */
+        header {
+            position: sticky; top: 0; background: #000;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 15px 20px; z-index: 1000; border-bottom: 0.5px solid var(--border);
+        }
+        .header-username { font-weight: 800; font-size: 1.1rem; letter-spacing: -0.3px; }
+
+        /* Search Overlay */
+        #search-view {
+            position: fixed; inset: 0; background: #000; z-index: 2000;
+            display: none; flex-direction: column;
+        }
+        .search-top { display: flex; align-items: center; padding: 15px; gap: 15px; }
+        .search-bar { 
+            flex: 1; background: #262626; border-radius: 10px; 
+            padding: 8px 12px; display: flex; align-items: center; 
+        }
+        .search-bar input { background: none; border: none; color: #fff; width: 100%; outline: none; }
+
+        /* Discovery Bar */
+        .discovery-bar {
+            display: flex; overflow-x: auto; padding: 15px; gap: 15px;
+            scrollbar-width: none; border-bottom: 0.5px solid var(--border);
+        }
+        .discovery-bar::-webkit-scrollbar { display: none; }
+        .contact-thumb { display: flex; flex-direction: column; align-items: center; min-width: 65px; }
+        
+        /* PFP Story Styling */
+        .pfp-wrap { position: relative; width: 60px; height: 60px; margin-bottom: 6px; }
+        .pfp-wrap img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 2px solid #000; padding: 2px; background: linear-gradient(45deg, #00d2ff, #7000ff); }
+        
+        /* THE FIX: Inline Verification Badge */
+        .v-badge {
+            height: 12px; 
+            width: 12px;
+            display: inline-flex;
+            align-self: center;
+            margin-left: 4px;
+            vertical-align: middle;
+        }
+
+        /* Chat List */
+        .chat-item {
+            display: flex; align-items: center; padding: 12px 20px; 
+            cursor: pointer;
+        }
+        .chat-pfp { width: 54px; height: 54px; border-radius: 50%; margin-right: 15px; object-fit: cover; }
+        
+        .chat-info { flex: 1; border-bottom: 0.5px solid rgba(255,255,255,0.05); padding-bottom: 12px; min-width: 0; }
+        .chat-header { display: flex; justify-content: space-between; align-items: center; }
+        
+        .u-name { 
+            font-weight: 600; 
+            font-size: 0.95rem; 
+            display: flex; 
+            align-items: center; 
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .last-msg { color: var(--text-dim); font-size: 0.9rem; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .unread-dot { width: 8px; height: 8px; background: #0095f6; border-radius: 50%; margin-left: 10px; }
+
+        nav {
+            position: fixed; bottom: 0; width: 100%; background: #000;
+            display: flex; justify-content: space-around; padding: 15px 0 25px;
+            border-top: 0.5px solid var(--border); z-index: 1000;
+        }
+        .nav-icon { font-size: 1.5rem; cursor: pointer; color: #fff; text-decoration: none; }
+    </style>
+</head>
+<body oncontextmenu="return false;">
+
+<div id="search-view">
+    <div class="search-top">
+        <span onclick="toggleSearch()" style="font-size: 1.5rem; cursor:pointer;">✕</span>
+        <div class="search-bar">
+            <input type="text" id="s-input" placeholder="Search" onkeyup="doSearch()">
+        </div>
+    </div>
+    <div id="s-results"></div>
+</div>
+
+<header>
+    <div style="font-size: 1.5rem; cursor: pointer;" onclick="history.back()">‹</div>
+    <div class="header-username" id="my-username">Goorac</div>
+    <div style="font-size: 1.3rem; cursor: pointer;" onclick="toggleSearch()">🔍</div>
+</header>
+
+<div class="discovery-bar" id="discover"></div>
+
+<div style="padding: 18px 20px 8px; font-weight: 700; font-size: 1rem;">Messages</div>
+<div id="chats"></div>
+
+<nav>
+    <a href="home.html" class="nav-icon">🏠</a>
+    <a href="add-contact.html" class="nav-icon">🔍</a>
+    <a href="messages.html" class="nav-icon" style="color:#00d2ff">💬</a>
+    <a href="profile.html" class="nav-icon">👤</a>
+</nav>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyCFzAEHC5KLiO2DEkVtoTlFn9zeCQrwImE",
+        authDomain: "goorac-c3b59.firebaseapp.com",
+        projectId: "goorac-c3b59",
+        storageBucket: "goorac-c3b59.firebasestorage.app",
+        messagingSenderId: "746746595332",
+        appId: "1:746746595332:web:d3f8527d27fe8ca2530d51"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+    const V_URL = "https://upload.wikimedia.org/wikipedia/commons/e/e4/Twitter_Verified_Badge.svg";
+
+    let myUid = "";
+    let followList = [];
+
+    auth.onAuthStateChanged(user => {
+        if (user) {
+            myUid = user.uid;
+            initApp();
+        } else { window.location.href='login.html'; }
+    });
+
+    async function initApp() {
+        const doc = await db.collection("users").doc(myUid).get();
+        document.getElementById('my-username').innerText = doc.data().username;
+        
+        const f = doc.data().following || [];
+        if(f.length > 0) {
+            db.collection("users").where(firebase.firestore.FieldPath.documentId(), "in", f)
+            .onSnapshot(s => {
+                followList = s.docs.map(d => ({id: d.id, ...d.data()}));
+                renderFollow();
+            });
+        }
+        listenChats();
+    }
+
+    function renderFollow() {
+        document.getElementById('discover').innerHTML = followList.map(u => `
+            <div class="contact-thumb" onclick="window.location.href='chat.html?user=${u.username}'">
+                <div class="pfp-wrap">
+                    <img src="${u.photoURL}">
+                </div>
+                <span class="u-name" style="font-size:0.7rem; color:#ccc;">
+                    ${u.username} ${u.verified ? `<img src="${V_URL}" class="v-badge">` : ''}
+                </span>
+            </div>
+        `).join('');
+    }
+
+    function listenChats() {
+        db.collection("chats").where("participants", "array-contains", myUid)
+        .orderBy("lastTimestamp", "desc")
+        .onSnapshot(async snap => {
+            const list = document.getElementById('chats');
+            list.innerHTML = "";
+            for (const d of snap.docs) {
+                const c = d.data();
+                const other = c.participants.find(id => id !== myUid);
+                const uDoc = await db.collection("users").doc(other).get();
+                const u = uDoc.data();
+                if(!u) continue;
+
+                const isUnread = (c.lastSender !== myUid && !c.seen);
+
+                list.innerHTML += `
+                    <div class="chat-item" onclick="window.location.href='chat.html?user=${u.username}'">
+                        <img src="${u.photoURL}" class="chat-pfp">
+                        <div class="chat-info">
+                            <div class="chat-header">
+                                <span class="u-name">${u.username} ${u.verified ? `<img src="${V_URL}" class="v-badge">` : ''}</span>
+                                <span style="color:#555; font-size:0.75rem;">${formatT(c.lastTimestamp)}</span>
+                            </div>
+                            <div style="display:flex; align-items:center; justify-content:space-between;">
+                                <div class="last-msg" style="${isUnread ? 'color:#fff; font-weight:700' : ''}">${c.lastMessage || 'Sent a message'}</div>
+                                ${isUnread ? '<div class="unread-dot"></div>' : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+    }
+
+    function toggleSearch() {
+        const v = document.getElementById('search-view');
+        v.style.display = (v.style.display === 'flex') ? 'none' : 'flex';
+    }
+
+    function doSearch() {
+        const val = document.getElementById('s-input').value.toLowerCase();
+        const res = followList.filter(u => u.username.toLowerCase().includes(val) || u.name.toLowerCase().includes(val));
+        document.getElementById('s-results').innerHTML = res.map(u => `
+            <div class="chat-item" onclick="window.location.href='chat.html?user=${u.username}'">
+                <img src="${u.photoURL}" style="width:45px; height:45px; border-radius:50%; margin-right:15px;">
+                <div class="chat-info">
+                    <div class="u-name">${u.username} ${u.verified ? `<img src="${V_URL}" class="v-badge">` : ''}</div>
+                    <div style="color:#555; font-size:0.85rem;">${u.name}</div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function formatT(ts) {
+        if(!ts) return "";
+        const d = ts.toDate();
+        const now = new Date();
+        if(d.toDateString() === now.toDateString()) return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+        return d.toLocaleDateString([], {month:'short', day:'numeric'});
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Goorac | Search</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <style>
+        :root {
+            --bg: #000;
+            --card: #0a0a0a;
+            --accent: #00d2ff;
+            --border: rgba(255, 255, 255, 0.1);
+            --glass: rgba(255, 255, 255, 0.05);
+        }
+
+        body {
+            background-color: var(--bg);
+            color: white;
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding-bottom: 100px;
+        }
+
+        /* Consistent Header */
+        header {
+            position: sticky;
+            top: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(20px);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            z-index: 100;
+        }
+        .header-title { font-weight: 800; font-size: 1.1rem; letter-spacing: -0.5px; }
+
+        .search-container { padding: 25px 20px; text-align: center; }
+        
+        /* Premium Search Input */
+        .search-wrapper {
+            position: relative;
+            margin-bottom: 30px;
+        }
+
+        .search-input {
+            width: 100%;
+            background: var(--card);
+            border: 1px solid var(--border);
+            padding: 18px 20px;
+            border-radius: 24px;
+            color: white;
+            font-size: 1rem;
+            outline: none;
+            box-sizing: border-box;
+            transition: 0.3s;
+        }
+        .search-input:focus { border-color: var(--accent); background: #111; }
+
+        .search-btn {
+            width: 100%;
+            background: #fff;
+            color: #000;
+            border: none;
+            padding: 16px;
+            border-radius: 20px;
+            font-weight: 800;
+            margin-top: 12px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .search-btn:active { transform: scale(0.97); }
+
+        /* Result Card - Matches Profile Squircle Style */
+        #result-area { margin: 10px 20px; display: none; }
+        .user-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 35px;
+            padding: 30px;
+            text-align: center;
+            animation: fadeIn 0.4s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .res-pfp { width: 90px; height: 90px; border-radius: 30px; object-fit: cover; margin-bottom: 15px; border: 1px solid var(--border); }
+        .res-name-row { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 1.3rem; font-weight: 800; }
+        .v-tick { width: 18px; height: 18px; }
+        .res-id-tag { color: var(--accent); font-size: 0.8rem; font-weight: 700; margin-top: 5px; display: block; margin-bottom: 20px; }
+
+        .follow-btn {
+            width: 100%; padding: 15px; border-radius: 18px; border: none; font-weight: 800; cursor: pointer; transition: 0.3s;
+        }
+        .btn-add { background: var(--accent); color: black; }
+        .btn-following { background: #1a1a1a; color: #666; }
+
+        /* UPDATED 4-ITEM NAVIGATION */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(25px);
+            display: flex;
+            justify-content: space-around;
+            padding: 15px 0 25px;
+            border-top: 1px solid var(--border);
+            z-index: 1000;
+        }
+
+        .nav-link {
+            text-decoration: none;
+            color: #555;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 0.7rem;
+            gap: 6px;
+        }
+
+        .nav-link.active { color: var(--accent); }
+        .nav-link i { font-size: 1.5rem; font-style: normal; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="header-title">Find Contacts</div>
+    <div style="opacity: 0.5;">📡</div>
+</header>
+
+<div class="search-container">
+    <div class="search-wrapper">
+        <input type="number" id="search-input" class="search-input" placeholder="Enter 10-digit Goorac ID" oninput="if(this.value.length > 10) this.value = this.value.slice(0, 10);">
+        <button class="search-btn" id="search-btn">Search Network</button>
+    </div>
+</div>
+
+<div id="result-area">
+    <div class="user-card">
+        <img id="res-pfp" src="" class="res-pfp">
+        <div class="res-name-row">
+            <span id="res-name">User Name</span>
+            <img id="res-v" src="https://upload.wikimedia.org/wikipedia/commons/e/e4/Twitter_Verified_Badge.svg" class="v-tick" style="display:none;">
+        </div>
+        <span class="res-id-tag">ID: <span id="res-num">----------</span></span>
+        <button id="follow-action-btn" class="follow-btn btn-add">Follow</button>
+    </div>
+</div>
+
+<nav class="bottom-nav">
+    <a href="home.html" class="nav-link">
+        <i>🏠</i><span>Home</span>
+    </a>
+    <a href="messages.html" class="nav-link">
+        <i>💬</i><span>Messages</span>
+    </a>
+    <a href="add-contact.html" class="nav-link active">
+        <i>🔍</i><span>Search</span>
+    </a>
+    <a href="profile.html" class="nav-link">
+        <i>👤</i><span>Profile</span>
+    </a>
+</nav>
+
+<script>
+    // ... [Previous Firebase and Search Logic stays the same] ...
+    // Note: Ensure the Firebase Config here matches your login.html
+    const firebaseConfig = {
+        apiKey: "AIzaSyCFzAEHC5KLiO2DEkVtoTlFn9zeCQrwImE",
+        authDomain: "goorac-c3b59.firebaseapp.com",
+        projectId: "goorac-c3b59",
+        storageBucket: "goorac-c3b59.firebasestorage.app",
+        messagingSenderId: "746746595332",
+        appId: "1:746746595332:web:d3f8527d27fe8ca2530d51"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    let currentUserUID = "";
+    let targetUserUID = "";
+
+    auth.onAuthStateChanged(user => {
+        if(user) currentUserUID = user.uid;
+        else window.location.href = "login.html";
+    });
+
+    document.getElementById('search-btn').onclick = async () => {
+        const idToSearch = document.getElementById('search-input').value;
+        if(idToSearch.length < 10) return;
+
+        const snapshot = await db.collection("users").where("gooracNumber", "==", parseInt(idToSearch)).get();
+
+        if (snapshot.empty) {
+            alert("No user found.");
+            document.getElementById('result-area').style.display = "none";
+        } else {
+            const userData = snapshot.docs[0].data();
+            targetUserUID = snapshot.docs[0].id;
+
+            document.getElementById('res-pfp').src = userData.photoURL;
+            document.getElementById('res-name').innerText = userData.name;
+            document.getElementById('res-num').innerText = userData.gooracNumber;
+            document.getElementById('res-v').style.display = userData.verified ? 'inline' : 'none';
+            
+            checkFollowStatus();
+            document.getElementById('result-area').style.display = "block";
+        }
+    };
+
+    async function checkFollowStatus() {
+        const myDoc = await db.collection("users").doc(currentUserUID).get();
+        const myFollowingList = myDoc.data().following || [];
+        const btn = document.getElementById('follow-action-btn');
+        if (myFollowingList.includes(targetUserUID)) {
+            btn.innerText = "Following";
+            btn.className = "follow-btn btn-following";
+        } else {
+            btn.innerText = "Follow";
+            btn.className = "follow-btn btn-add";
+        }
+    }
+
+    document.getElementById('follow-action-btn').onclick = async () => {
+        const btn = document.getElementById('follow-action-btn');
+        if (btn.innerText === "Follow") {
+            await db.collection("users").doc(currentUserUID).update({
+                following: firebase.firestore.FieldValue.arrayUnion(targetUserUID),
+                followingCount: firebase.firestore.FieldValue.increment(1)
+            });
+            await db.collection("users").doc(targetUserUID).update({
+                followers: firebase.firestore.FieldValue.arrayUnion(currentUserUID),
+                followerCount: firebase.firestore.FieldValue.increment(1)
+            });
+            btn.innerText = "Following";
+            btn.className = "follow-btn btn-following";
+        }
+    };
+</script>
+
+</body>
+</html>

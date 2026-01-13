@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Goorac | Profile</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <style>
+        :root {
+            --bg: #000000;
+            --card: #0a0a0a;
+            --accent: #00d2ff;
+            --glass: rgba(255, 255, 255, 0.03);
+            --border: rgba(255, 255, 255, 0.1);
+            --nav-bg: rgba(0, 0, 0, 0.9);
+        }
+
+        body {
+            background-color: var(--bg);
+            color: #fff;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            margin: 0;
+            padding-bottom: 100px; /* Space for bottom nav */
+            overflow-x: hidden;
+        }
+
+        /* Frosted Glass Top Header */
+        header {
+            position: sticky;
+            top: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(20px);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            z-index: 100;
+        }
+
+        .header-username { font-weight: 800; font-size: 1rem; letter-spacing: -0.5px; color: #fff; }
+
+        /* Profile Hero Section */
+        .profile-hero {
+            padding: 40px 20px 20px;
+            text-align: center;
+            background: radial-gradient(circle at top, rgba(0, 210, 255, 0.08) 0%, transparent 70%);
+        }
+
+        .pfp-container {
+            position: relative;
+            width: 110px;
+            height: 110px;
+            margin: 0 auto 20px;
+        }
+
+        .pfp-main {
+            width: 100%;
+            height: 100%;
+            border-radius: 38px; /* High-end Squircle */
+            object-fit: cover;
+            border: 2px solid var(--border);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .name-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 5px;
+        }
+
+        .full-name { font-size: 1.6rem; font-weight: 900; letter-spacing: -0.5px; }
+
+        .verify-badge {
+            width: 22px;
+            height: 22px;
+            display: none; /* Controlled by JS */
+        }
+
+        .goorac-id-tag {
+            background: var(--glass);
+            border: 1px solid var(--border);
+            padding: 6px 16px;
+            border-radius: 100px;
+            font-size: 0.8rem;
+            color: var(--accent);
+            font-weight: 700;
+            display: inline-block;
+            margin-bottom: 25px;
+        }
+
+        /* Modern Stats Row */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            padding: 0 20px;
+            margin-bottom: 35px;
+        }
+
+        .stat-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            padding: 18px;
+            border-radius: 24px;
+            transition: 0.3s;
+        }
+
+        .stat-card:active { transform: scale(0.95); background: #111; }
+
+        .stat-card span { display: block; font-size: 1.3rem; font-weight: 900; margin-bottom: 2px; }
+        .stat-card label { font-size: 0.7rem; color: #666; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+
+        /* Bio Section */
+        .bio-section {
+            padding: 0 25px;
+            margin-bottom: 35px;
+        }
+        .bio-section h3 { font-size: 0.75rem; color: #555; text-transform: uppercase; margin-bottom: 10px; letter-spacing: 1px; }
+        .bio-section p { font-size: 0.95rem; color: #bbb; line-height: 1.6; margin: 0; }
+
+        /* Actions Grid */
+        .action-grid {
+            padding: 0 20px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 16px;
+            border-radius: 20px;
+            border: none;
+            font-weight: 800;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: 0.2s;
+            text-align: center;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-edit { background: #fff; color: #000; }
+        .btn-logout { background: #1a1a1a; color: #ff4b4b; border: 1px solid rgba(255, 75, 75, 0.1); }
+        .btn:active { transform: scale(0.96); }
+
+        /* Bottom Navigation Bar */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background: var(--nav-bg);
+            backdrop-filter: blur(25px);
+            display: flex;
+            justify-content: space-around;
+            padding: 15px 0 25px; /* Extra bottom padding for mobile home indicators */
+            border-top: 1px solid var(--border);
+            z-index: 1000;
+        }
+
+        .nav-link {
+            text-decoration: none;
+            color: #555;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 0.7rem;
+            gap: 6px;
+            transition: 0.3s;
+        }
+
+        .nav-link.active { color: var(--accent); }
+        .nav-link i { font-size: 1.5rem; font-style: normal; }
+
+        /* Full Screen Loader */
+        #profile-loader {
+            position: fixed; inset: 0; background: #000;
+            display: flex; justify-content: center; align-items: center; z-index: 9999;
+        }
+    </style>
+</head>
+<body>
+
+<div id="profile-loader">
+    <div style="color: var(--accent); font-weight: 800; letter-spacing: 2px;">GOORAC...</div>
+</div>
+
+<header>
+    <div class="header-username" id="header-user">@username</div>
+    <div style="font-size: 1.2rem; opacity: 0.4;">⚙️</div>
+</header>
+
+<div class="profile-hero">
+    <div class="pfp-container">
+        <img id="pfp-img" src="" class="pfp-main">
+    </div>
+    
+    <div class="name-container">
+        <span class="full-name" id="user-full-name">...</span>
+        <img id="v-badge" src="https://upload.wikimedia.org/wikipedia/commons/e/e4/Twitter_Verified_Badge.svg" class="verify-badge">
+    </div>
+    
+    <div class="goorac-id-tag">GOORAC ID: <span id="user-id-num">----------</span></div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <span id="stat-followers">0</span>
+        <label>Followers</label>
+    </div>
+    <div class="stat-card">
+        <span id="stat-following">0</span>
+        <label>Following</label>
+    </div>
+</div>
+
+<div class="bio-section">
+    <h3>Bio</h3>
+    <p id="bio-text">No bio provided yet.</p>
+</div>
+
+<div class="action-grid">
+    <a href="setup.html" class="btn btn-edit">Edit Profile</a>
+    <button id="logoutBtn" class="btn btn-logout">Logout</button>
+</div>
+
+<nav class="bottom-nav">
+    <a href="home.html" class="nav-link">
+        <i>🏠</i><span>Home</span>
+    </a>
+    <a href="messages.html" class="nav-link">
+        <i>💬</i><span>Messages</span>
+    </a>
+    <a href="add-contact.html" class="nav-link">
+        <i>🔍</i><span>Search</span>
+    </a>
+    <a href="profile.html" class="nav-link active">
+        <i>👤</i><span>Profile</span>
+    </a>
+</nav>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyCFzAEHC5KLiO2DEkVtoTlFn9zeCQrwImE",
+        authDomain: "goorac-c3b59.firebaseapp.com",
+        projectId: "goorac-c3b59",
+        storageBucket: "goorac-c3b59.firebasestorage.app",
+        messagingSenderId: "746746595332",
+        appId: "1:746746595332:web:d3f8527d27fe8ca2530d51"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    auth.onAuthStateChanged(async (user) => {
+        if (user) {
+            try {
+                const doc = await db.collection("users").doc(user.uid).get();
+                if (doc.exists) {
+                    const data = doc.data();
+                    
+                    // Populate UI
+                    document.getElementById('pfp-img').src = data.photoURL || "";
+                    document.getElementById('user-full-name').innerText = data.name || "User";
+                    document.getElementById('header-user').innerText = "@" + (data.username || "user");
+                    document.getElementById('user-id-num').innerText = data.gooracNumber || "----------";
+                    document.getElementById('bio-text').innerText = data.bio || "Welcome to my Goorac profile.";
+                    
+                    // Stats
+                    document.getElementById('stat-followers').innerText = data.followerCount || 0;
+                    document.getElementById('stat-following').innerText = data.followingCount || 0;
+
+                    // Verification
+                    if (data.verified === true) {
+                        document.getElementById('v-badge').style.display = 'inline';
+                    }
+
+                    // Hide Loader
+                    document.getElementById('profile-loader').style.display = 'none';
+                } else {
+                    window.location.href = "setup.html";
+                }
+            } catch (err) {
+                console.error("Profile Error:", err);
+            }
+        } else {
+            window.location.href = "login.html";
+        }
+    });
+
+    // Logout Action
+    document.getElementById('logoutBtn').onclick = () => {
+        auth.signOut().then(() => {
+            window.location.href = "login.html";
+        });
+    };
+</script>
+
+</body>
+</html>

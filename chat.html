@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Goorac | Quantum Chat</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <style>
+        :root {
+            --bg: #000;
+            --neon: #00d2ff;
+            --glass: rgba(255, 255, 255, 0.05);
+            --border: rgba(255, 255, 255, 0.1);
+            --my-bubble: linear-gradient(135deg, #0084ff, #00d2ff);
+        }
+
+        body {
+            background: var(--bg); color: white; margin: 0;
+            font-family: 'Inter', -apple-system, sans-serif;
+            display: flex; flex-direction: column; height: 100vh;
+        }
+
+        /* Futuristic Glass Header */
+        header {
+            padding: 12px 20px;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; z-index: 100;
+        }
+        .back-btn { font-size: 1.5rem; margin-right: 15px; cursor: pointer; color: var(--neon); }
+        .h-pfp { width: 40px; height: 40px; border-radius: 14px; object-fit: cover; margin-right: 12px; border: 1px solid var(--border); }
+        .h-name { font-weight: 700; font-size: 1rem; display: flex; align-items: center; gap: 5px; letter-spacing: -0.3px; }
+        .v-badge { height: 12px; width: 12px; vertical-align: middle; }
+
+        /* Chat Flow */
+        #chat-flow {
+            flex: 1; overflow-y: auto; padding: 20px;
+            display: flex; flex-direction: column; gap: 12px;
+            background: radial-gradient(circle at top right, #0a0a0a, #000);
+        }
+
+        .bubble {
+            max-width: 70%; padding: 12px 16px; border-radius: 20px;
+            font-size: 0.95rem; line-height: 1.5; position: relative;
+            backdrop-filter: blur(10px); animation: slideUp 0.3s ease;
+        }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .sent {
+            align-self: flex-end; background: var(--my-bubble);
+            color: black; font-weight: 500; border-bottom-right-radius: 4px;
+            box-shadow: 0 4px 15px rgba(0, 210, 255, 0.3);
+        }
+        .received {
+            align-self: flex-start; background: var(--glass);
+            border: 1px solid var(--border); color: white;
+            border-bottom-left-radius: 4px;
+        }
+
+        .time { font-size: 0.6rem; opacity: 0.6; margin-top: 5px; display: block; }
+
+        /* Loading Indicator for Pagination */
+        #load-more { text-align: center; font-size: 0.7rem; color: var(--neon); padding: 10px; display: none; }
+
+        /* Input Area */
+        .input-box {
+            padding: 20px; background: #000; border-top: 1px solid var(--border);
+            display: flex; align-items: center; gap: 15px;
+        }
+        .msg-input {
+            flex: 1; background: var(--glass); border: 1px solid var(--border);
+            padding: 12px 18px; border-radius: 15px; color: white; outline: none;
+            transition: 0.3s;
+        }
+        .msg-input:focus { border-color: var(--neon); background: rgba(255,255,255,0.08); }
+        .send-btn { 
+            background: var(--neon); color: black; border: none; 
+            padding: 10px 18px; border-radius: 12px; font-weight: 800;
+            cursor: pointer; box-shadow: 0 0 15px var(--neon);
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="back-btn" onclick="location.href='messages.html'">‹</div>
+    <img id="header-pfp" src="" class="h-pfp">
+    <div class="h-info">
+        <div class="h-name" id="header-name">Loading...</div>
+        <div style="font-size: 0.65rem; color: var(--neon); text-transform: uppercase; letter-spacing: 1px;">Encrypted</div>
+    </div>
+</header>
+
+<div id="chat-flow">
+    <div id="load-more">Loading history...</div>
+</div>
+
+<div class="input-box">
+    <input type="text" id="m-input" class="msg-input" placeholder="Enter message..." autocomplete="off">
+    <button class="send-btn" onclick="sendMsg()">SEND</button>
+</div>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyCFzAEHC5KLiO2DEkVtoTlFn9zeCQrwImE",
+        authDomain: "goorac-c3b59.firebaseapp.com",
+        projectId: "goorac-c3b59",
+        storageBucket: "goorac-c3b59.firebasestorage.app",
+        messagingSenderId: "746746595332",
+        appId: "1:746746595332:web:d3f8527d27fe8ca2530d51"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+    const V_URL = "https://upload.wikimedia.org/wikipedia/commons/e/e4/Twitter_Verified_Badge.svg";
+
+    const params = new URLSearchParams(window.location.search);
+    const targetUser = params.get('user');
+    let myUid, targetUid, chatId;
+    let lastVisible = null; // Used for Pagination
+    let isBatchLoading = false;
+
+    auth.onAuthStateChanged(user => {
+        if (user) {
+            myUid = user.uid;
+            init();
+        } else { location.href='login.html'; }
+    });
+
+    async function init() {
+        const snap = await db.collection("users").where("username", "==", targetUser).get();
+        if (snap.empty) return;
+        const data = snap.docs[0].data();
+        targetUid = snap.docs[0].id;
+
+        document.getElementById('header-name').innerHTML = `${data.username} ${data.verified ? `<img src="${V_URL}" class="v-badge">` : ''}`;
+        document.getElementById('header-pfp').src = data.photoURL;
+
+        chatId = myUid < targetUid ? `${myUid}_${targetUid}` : `${targetUid}_${myUid}`;
+
+        // Initial Load of last 15 messages
+        loadMessages();
+
+        // Real-time listener for NEW messages only (to save reads)
+        db.collection("chats").doc(chatId).collection("messages")
+          .orderBy("timestamp", "desc").limit(1)
+          .onSnapshot(s => {
+              if(!s.empty && !isBatchLoading) {
+                  const m = s.docs[0].data();
+                  // Only append if it's a new message sent after page load
+                  if(m.timestamp) appendMessage(m, true);
+              }
+          });
+    }
+
+    async function loadMessages() {
+        if(isBatchLoading) return;
+        isBatchLoading = true;
+        document.getElementById('load-more').style.display = 'block';
+
+        let query = db.collection("chats").doc(chatId).collection("messages")
+                      .orderBy("timestamp", "desc")
+                      .limit(15);
+
+        if (lastVisible) {
+            query = query.startAfter(lastVisible);
+        }
+
+        const snap = await query.get();
+        if (!snap.empty) {
+            lastVisible = snap.docs[snap.docs.length - 1];
+            const msgs = [];
+            snap.forEach(doc => msgs.push(doc.data()));
+            
+            // Render them (reversed because we fetched desc)
+            msgs.reverse().forEach(m => appendMessage(m, false));
+        }
+
+        document.getElementById('load-more').style.display = 'none';
+        isBatchLoading = false;
+        
+        // On first load, scroll to bottom
+        if(!lastVisible) {
+            const flow = document.getElementById('chat-flow');
+            flow.scrollTo(0, flow.scrollHeight);
+        }
+    }
+
+    function appendMessage(m, isNew) {
+        const flow = document.getElementById('chat-flow');
+        const side = m.sender === myUid ? 'sent' : 'received';
+        const time = m.timestamp ? m.timestamp.toDate().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : "Sending...";
+        
+        const html = `
+            <div class="bubble ${side}">
+                ${m.text}
+                <span class="time">${time}</span>
+            </div>
+        `;
+        
+        if(isNew) {
+            flow.insertAdjacentHTML('beforeend', html);
+            flow.scrollTo({top: flow.scrollHeight, behavior: 'smooth'});
+        } else {
+            // Prepend for history
+            const loadMore = document.getElementById('load-more');
+            loadMore.insertAdjacentHTML('afterend', html);
+        }
+    }
+
+    // Scroll listener for pagination
+    document.getElementById('chat-flow').addEventListener('scroll', (e) => {
+        if (e.target.scrollTop === 0) {
+            loadMessages();
+        }
+    });
+
+    async function sendMsg() {
+        const input = document.getElementById('m-input');
+        const text = input.value.trim();
+        if (!text) return;
+        input.value = "";
+
+        const msgObj = {
+            text: text,
+            sender: myUid,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        await db.collection("chats").doc(chatId).collection("messages").add(msgObj);
+        await db.collection("chats").doc(chatId).set({
+            participants: [myUid, targetUid],
+            lastMessage: text,
+            lastTimestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            lastSender: myUid,
+            seen: false
+        }, { merge: true });
+    }
+</script>
+</body>
+</html>
