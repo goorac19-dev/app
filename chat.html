@@ -230,6 +230,9 @@
         document.getElementById('h-name').innerText = targetData.username;
         document.getElementById('h-pfp').src = targetData.photoURL || 'https://via.placeholder.com/150';
 
+        // RESET MY UNREAD COUNT ON OPEN
+        db.collection("chats").doc(chatId).update({ [`unreadCount.${myUid}`]: 0, seen: true }).catch(e => {});
+
         rdb.ref(`typing/${chatId}/${targetUid}`).on('value', (s) => {
             const isTyping = s.val();
             bottomTyping.style.display = isTyping ? 'block' : 'none';
@@ -271,8 +274,7 @@
                     renderMessage(item.data, item.id);
                     if(item.data.sender !== myUid && !item.data.seen) {
                         db.collection("chats").doc(chatId).collection("messages").doc(item.id).update({ seen: true });
-                        // Update seen status on main chat too
-                        db.collection("chats").doc(chatId).update({ seen: true });
+                        db.collection("chats").doc(chatId).update({ seen: true, [`unreadCount.${myUid}`]: 0 });
                     }
                 });
 
@@ -358,6 +360,7 @@
         rdb.ref(`typing/${chatId}/${myUid}`).set(false);
         if (editModeId) {
             await db.collection("chats").doc(chatId).collection("messages").doc(editModeId).update({ text, edited: true });
+            db.collection("chats").doc(chatId).update({ lastMessage: text });
             editModeId = null;
         } else {
             const rText = replyingTo; cancelReply();
@@ -366,13 +369,13 @@
                 replyTo: rText, seen: false, reaction: ""
             });
             
-            // SYNC TO INBOX: Update parent document
             await db.collection("chats").doc(chatId).set({
                 lastMessage: text,
                 lastSender: myUid,
                 lastTimestamp: firebase.firestore.FieldValue.serverTimestamp(),
                 participants: [myUid, targetUid],
-                seen: false
+                seen: false,
+                [`unreadCount.${targetUid}`]: firebase.firestore.FieldValue.increment(1)
             }, { merge: true });
         }
         mInput.value = "";
@@ -421,8 +424,27 @@
     }
 
     async function unsendMsg() { 
-        if(activeMenuId) db.collection("chats").doc(chatId).collection("messages").doc(activeMenuId).delete(); 
-        closeMenu(); 
+        if(!activeMenuId) return;
+        const idToDelete = activeMenuId;
+        closeMenu();
+        
+        // Delete the message
+        await db.collection("chats").doc(chatId).collection("messages").doc(idToDelete).delete();
+        
+        // SYNC INBOX: Fetch the new "last message"
+        const remaining = await db.collection("chats").doc(chatId).collection("messages")
+            .orderBy("timestamp", "desc").limit(1).get();
+            
+        if (!remaining.empty) {
+            const last = remaining.docs[0].data();
+            db.collection("chats").doc(chatId).update({
+                lastMessage: last.text,
+                lastSender: last.sender,
+                lastTimestamp: last.timestamp
+            });
+        } else {
+            db.collection("chats").doc(chatId).update({ lastMessage: "", lastSender: "" });
+        }
     }
 
     mInput.oninput = () => rdb.ref(`typing/${chatId}/${myUid}`).set(mInput.value.trim().length > 0);

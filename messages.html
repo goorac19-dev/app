@@ -68,7 +68,16 @@
             background: var(--accent); color: #000; border: none; 
             padding: 6px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 800; cursor: pointer;
         }
-        .unread-dot { width: 10px; height: 10px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 10px var(--accent); flex-shrink: 0; }
+
+        /* --- QUANTUM UNREAD BADGE --- */
+        .unread-badge { 
+            background: var(--accent); color: #000; 
+            min-width: 20px; height: 20px; border-radius: 10px; 
+            font-size: 0.75rem; font-weight: 900;
+            display: flex; align-items: center; justify-content: center;
+            padding: 0 6px; box-shadow: 0 0 12px var(--accent);
+            flex-shrink: 0;
+        }
 
         nav {
             position: fixed; bottom: 0; width: 100%; background: #000;
@@ -161,10 +170,17 @@
                 if(!u) return;
 
                 const isUnread = (chat.lastSender !== myUid && chat.seen === false);
-                const amIFollowing = myFollowingList.includes(otherUid);
                 
-                // FIXED: Prioritizing 'name' field as per Firestore structure
-                const finalDisplayName = u.name || u.displayName || u.username;
+                // Logic to get unread count:
+                let displayCount = "";
+                if (chat.unreadCount && chat.unreadCount[myUid]) {
+                    const num = chat.unreadCount[myUid];
+                    displayCount = num > 99 ? "99+" : num;
+                }
+
+                const amIFollowing = myFollowingList.includes(otherUid);
+                const finalDisplayName = u.name || u.displayName || u.username || "Unknown User";
+                const lastMsgSnippet = chat.lastMessage ? chat.lastMessage : `<span style="font-style:italic; opacity:0.6;">Message unsent</span>`;
 
                 const item = document.createElement('div');
                 item.className = 'chat-item';
@@ -182,11 +198,11 @@
                         </div>
                         <div style="display:flex; justify-content:space-between; align-items:center;">
                             <div class="last-msg" id="last-msg-${id}" style="${isUnread ? 'color:#fff; font-weight:700;' : ''}">
-                                ${chat.lastMessage || 'New connection started'}
+                                ${lastMsgSnippet}
                             </div>
                             <div style="display:flex; align-items:center; gap:10px;" id="meta-${id}">
                                 ${!amIFollowing ? `<button class="follow-btn" onclick="followUser(event, '${otherUid}')">Follow</button>` : ''}
-                                ${isUnread ? `<div class="unread-dot"></div>` : ''}
+                                ${isUnread ? `<div class="unread-badge">${displayCount}</div>` : ''}
                             </div>
                         </div>
                     </div>
@@ -199,7 +215,7 @@
                     if(s.val() === true) {
                         msgEl.innerHTML = `<span class="typing-text">typing...</span>`;
                     } else {
-                        msgEl.innerText = chat.lastMessage || 'New connection started';
+                        msgEl.innerHTML = lastMsgSnippet;
                     }
                 });
             });
@@ -227,10 +243,7 @@
             results.innerHTML = snap.docs.map(doc => {
                 const u = doc.data();
                 if(doc.id === myUid) return '';
-                
-                // FIXED: Use 'name' for search results
                 const searchName = u.name || u.displayName || u.username;
-
                 return `
                     <div class="chat-item" onclick="location.href='chat.html?user=${u.username}'">
                         <img src="${u.photoURL || 'https://via.placeholder.com/150'}" class="chat-pfp" style="width:40px; height:40px;">
@@ -244,11 +257,20 @@
     }
 
     function formatTime(date) {
-        const now = new Date();
-        const diff = (now - date) / 1000;
-        if(diff < 60) return 'Just now';
-        if(date.toDateString() === now.toDateString()) return date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-        return date.toLocaleDateString([], {month:'short', day:'numeric'});
+        const seconds = Math.floor((new Date() - date) / 1000);
+        let interval = seconds / 31536000;
+        if (interval > 1) return Math.floor(interval) + "y";
+        interval = seconds / 2592000;
+        if (interval > 1) return Math.floor(interval) + "mo";
+        interval = seconds / 604800;
+        if (interval > 1) return Math.floor(interval) + "w";
+        interval = seconds / 86400;
+        if (interval > 1) return Math.floor(interval) + "d";
+        interval = seconds / 3600;
+        if (interval > 1) return Math.floor(interval) + "h";
+        interval = seconds / 60;
+        if (interval > 1) return Math.floor(interval) + "m";
+        return "now";
     }
 </script>
 </body>
