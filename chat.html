@@ -209,7 +209,7 @@
         }
     }
 
-    // Enter to send logic
+    // Enter to send logic (Keeps keyboard open naturally while typing)
     mInput.addEventListener("keypress", (e) => {
         if (e.key === "Enter") {
             e.preventDefault();
@@ -298,7 +298,7 @@
             e.preventDefault();
             vibrate(40);
             applyReactionToId(id, m.reaction === '❤️' ? '' : '❤️');
-            mInput.focus(); // Keep keyboard open
+            // Removed mInput.focus()
         });
 
         let startX = 0, currentX = 0, menuTimer = null, isMoving = false, swipeTriggered = false;
@@ -330,7 +330,7 @@
             bubble.style.transform = `translateX(0px)`;
             if (diff > 65) triggerReply(m.text);
             startX = 0; currentX = 0;
-            if (!isMoving) mInput.focus(); // Keep keyboard open on tap
+            // Removed mInput.focus()
         });
 
         div.innerHTML = `
@@ -352,7 +352,8 @@
         replyingTo = text;
         document.getElementById('reply-text').innerText = replyingTo;
         document.getElementById('reply-dock').style.display = 'flex';
-        mInput.focus();
+        // focus() is appropriate here because user is initiating an action
+        mInput.focus(); 
     }
 
     async function sendMsg() {
@@ -370,7 +371,7 @@
             });
         }
         mInput.value = "";
-        mInput.focus(); // Keep keyboard open after sending
+        // No focus() here ensures keyboard behaves naturally based on mobile OS
     }
 
     function openMenu(id, sender, text) {
@@ -388,7 +389,6 @@
         const currentReaction = doc.data().reaction;
         await msgRef.update({ reaction: currentReaction === emoji ? "" : emoji });
         closeMenu();
-        mInput.focus();
     }
 
     async function applyReactionToId(id, emoji) {
@@ -402,13 +402,18 @@
 
     function closeMenu() { 
         document.getElementById('menu-overlay').style.display = 'none'; 
-        mInput.focus();
     }
-    function cancelReply() { replyingTo = null; document.getElementById('reply-dock').style.display = 'none'; mInput.focus();}
+    
+    function cancelReply() { 
+        replyingTo = null; 
+        document.getElementById('reply-dock').style.display = 'none'; 
+    }
     
     function initEdit() {
         mInput.value = document.getElementById('text-'+activeMenuId).innerText.split('(edited)')[0].trim();
-        editModeId = activeMenuId; closeMenu(); mInput.focus();
+        editModeId = activeMenuId; 
+        closeMenu(); 
+        mInput.focus();
     }
 
     async function unsendMsg() { 
