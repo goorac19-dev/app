@@ -41,7 +41,6 @@
             display: flex; align-items: center; gap: 12px; z-index: 100; backdrop-filter: blur(10px);
             flex-shrink: 0;
         }
-        /* Clickable Profile Container */
         .h-profile-group { display: flex; align-items: center; gap: 12px; cursor: pointer; flex: 1; }
         .h-pfp { width: 38px; height: 38px; border-radius: 50%; border: 1.5px solid var(--accent); object-fit: cover; }
         .h-info { display: flex; flex-direction: column; }
@@ -55,7 +54,6 @@
         
         #messages-container { display: flex; flex-direction: column; }
 
-        /* Bottom Typing Indicator Styling */
         #typing-indicator-bottom {
             padding: 8px 14px;
             font-size: 0.75rem;
@@ -209,7 +207,6 @@
         }
     }
 
-    // Enter to send logic (Keeps keyboard open naturally while typing)
     mInput.addEventListener("keypress", (e) => {
         if (e.key === "Enter") {
             e.preventDefault();
@@ -274,6 +271,8 @@
                     renderMessage(item.data, item.id);
                     if(item.data.sender !== myUid && !item.data.seen) {
                         db.collection("chats").doc(chatId).collection("messages").doc(item.id).update({ seen: true });
+                        // Update seen status on main chat too
+                        db.collection("chats").doc(chatId).update({ seen: true });
                     }
                 });
 
@@ -298,7 +297,6 @@
             e.preventDefault();
             vibrate(40);
             applyReactionToId(id, m.reaction === '❤️' ? '' : '❤️');
-            // Removed mInput.focus()
         });
 
         let startX = 0, currentX = 0, menuTimer = null, isMoving = false, swipeTriggered = false;
@@ -330,7 +328,6 @@
             bubble.style.transform = `translateX(0px)`;
             if (diff > 65) triggerReply(m.text);
             startX = 0; currentX = 0;
-            // Removed mInput.focus()
         });
 
         div.innerHTML = `
@@ -352,7 +349,6 @@
         replyingTo = text;
         document.getElementById('reply-text').innerText = replyingTo;
         document.getElementById('reply-dock').style.display = 'flex';
-        // focus() is appropriate here because user is initiating an action
         mInput.focus(); 
     }
 
@@ -369,9 +365,17 @@
                 text, sender: myUid, timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                 replyTo: rText, seen: false, reaction: ""
             });
+            
+            // SYNC TO INBOX: Update parent document
+            await db.collection("chats").doc(chatId).set({
+                lastMessage: text,
+                lastSender: myUid,
+                lastTimestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                participants: [myUid, targetUid],
+                seen: false
+            }, { merge: true });
         }
         mInput.value = "";
-        // No focus() here ensures keyboard behaves naturally based on mobile OS
     }
 
     function openMenu(id, sender, text) {

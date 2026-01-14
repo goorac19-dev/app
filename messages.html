@@ -2,11 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Goorac | Quantum Inbox</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <style>
         :root {
@@ -19,14 +20,15 @@
         body {
             background: var(--bg); color: white; margin: 0;
             font-family: -apple-system, system-ui, sans-serif;
-            padding-bottom: 90px;
-            overflow-x: hidden;
+            padding-bottom: 90px; overflow-x: hidden;
+            -webkit-user-select: none; user-select: none;
         }
 
         header {
-            position: sticky; top: 0; background: #000;
+            position: sticky; top: 0; background: rgba(0,0,0,0.9);
             padding: 15px 20px; display: flex; justify-content: space-between;
             align-items: center; border-bottom: 1px solid var(--border); z-index: 1000;
+            backdrop-filter: blur(10px);
         }
         .header-logo { font-weight: 900; font-size: 1.4rem; letter-spacing: -1px; }
 
@@ -34,31 +36,45 @@
         .search-input {
             width: 100%; background: #111; border: 1px solid var(--border);
             padding: 12px 15px; border-radius: 12px; color: white; outline: none; box-sizing: border-box;
-            font-size: 0.95rem;
+            font-size: 16px !important;
         }
+
+        /* --- SKELETON LOADING --- */
+        .skeleton-item {
+            display: flex; align-items: center; padding: 15px 20px; opacity: 0.5;
+            animation: quantumPulse 1.5s infinite ease-in-out;
+        }
+        .skeleton-circle { width: 55px; height: 55px; border-radius: 50%; background: #222; margin-right: 15px; }
+        .skeleton-line { height: 12px; background: #222; border-radius: 4px; margin-bottom: 8px; }
+        @keyframes quantumPulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.6; } }
 
         .chat-item { 
             display: flex; align-items: center; padding: 15px 20px; 
             cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05);
+            transition: background 0.2s;
         }
-        .chat-pfp { width: 55px; height: 55px; border-radius: 50%; margin-right: 15px; object-fit: cover; }
+        .chat-item:active { background: rgba(255,255,255,0.05); }
+
+        .chat-pfp { width: 55px; height: 55px; border-radius: 50%; margin-right: 15px; object-fit: cover; border: 1px solid var(--border); }
         .chat-info { flex: 1; min-width: 0; }
         .chat-top-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
-        .u-name { font-weight: 700; font-size: 1rem; display: flex; align-items: center; gap: 5px; }
-        .v-badge { height: 14px; width: 14px; }
-        .last-msg { color: var(--text-dim); font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 75%; }
         
+        .u-name { font-weight: 700; font-size: 1rem; display: flex; align-items: center; gap: 5px; color: #fff; }
+        .v-badge { height: 15px; width: 15px; }
+        .last-msg { color: var(--text-dim); font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 70%; }
+        .typing-text { color: var(--accent); font-weight: 600; font-style: italic; }
+
         .follow-btn { 
             background: var(--accent); color: #000; border: none; 
-            padding: 5px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 800; cursor: pointer;
+            padding: 6px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 800; cursor: pointer;
         }
-        .unread-dot { width: 10px; height: 10px; background: var(--accent); border-radius: 50%; }
+        .unread-dot { width: 10px; height: 10px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 10px var(--accent); flex-shrink: 0; }
 
-        /* UNIFIED NAVIGATION - ORDER: HOME | MESSAGES | SEARCH | PROFILE */
         nav {
             position: fixed; bottom: 0; width: 100%; background: #000;
             display: flex; justify-content: space-around; align-items: center;
-            padding: 15px 0 25px; border-top: 1px solid var(--border); z-index: 2000;
+            padding: 15px 0 calc(15px + env(safe-area-inset-bottom)); 
+            border-top: 1px solid var(--border); z-index: 2000;
         }
         .nav-icon { font-size: 1.5rem; color: #555; text-decoration: none; transition: 0.2s; }
         .nav-icon.active { color: var(--accent); }
@@ -68,19 +84,21 @@
 </head>
 <body>
 
-<header>
-    <div class="header-logo">GOORAC</div>
-</header>
+<header><div class="header-logo">GOORAC</div></header>
 
 <div class="search-wrap">
-    <input type="text" class="search-input" id="main-search" placeholder="Search people..." oninput="searchUsers(this.value)">
+    <input type="text" class="search-input" id="main-search" placeholder="Search people..." oninput="searchUsers(this.value)" autocomplete="off">
 </div>
 
 <div id="search-results"></div>
 
 <div id="inbox-content">
-    <div style="padding: 10px 20px; font-size: 0.7rem; color: #555; font-weight: 800; letter-spacing: 1.5px;">RECENT TRANSMISSIONS</div>
-    <div id="chats-list"></div>
+    <div style="padding: 10px 20px; font-size: 0.7rem; color: #555; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase;">Recent Transmissions</div>
+    
+    <div id="chats-list">
+        <div class="skeleton-item"><div class="skeleton-circle"></div><div style="flex:1"><div class="skeleton-line" style="width:40%"></div><div class="skeleton-line" style="width:70%"></div></div></div>
+        <div class="skeleton-item"><div class="skeleton-circle"></div><div style="flex:1"><div class="skeleton-line" style="width:30%"></div><div class="skeleton-line" style="width:60%"></div></div></div>
+    </div>
 </div>
 
 <nav>
@@ -97,11 +115,13 @@
         projectId: "goorac-c3b59",
         storageBucket: "goorac-c3b59.firebasestorage.app",
         messagingSenderId: "746746595332",
-        appId: "1:746746595332:web:d3f8527d27fe8ca2530d51"
+        appId: "1:746746595332:web:d3f8527d27fe8ca2530d51",
+        databaseURL: "https://goorac-c3b59-default-rtdb.firebaseio.com"
     };
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+    const rdb = firebase.database();
     const auth = firebase.auth();
     const V_URL = "https://upload.wikimedia.org/wikipedia/commons/e/e4/Twitter_Verified_Badge.svg";
 
@@ -125,41 +145,66 @@
         db.collection("chats").where("participants", "array-contains", myUid)
         .onSnapshot(async snap => {
             const list = document.getElementById('chats-list');
-            const sortedDocs = snap.docs.sort((a,b) => (b.data().lastTimestamp?.seconds || 0) - (a.data().lastTimestamp?.seconds || 0));
-
-            let html = "";
-            for (const d of sortedDocs) {
+            
+            const chatPromises = snap.docs.map(async d => {
                 const chat = d.data();
                 const otherUid = chat.participants.find(id => id !== myUid);
                 const otherDoc = await db.collection("users").doc(otherUid).get();
-                const u = otherDoc.data();
-                if(!u) continue;
+                return { id: d.id, chat, u: otherDoc.data(), otherUid };
+            });
 
-                const isUnread = (chat.lastSender !== myUid && !chat.seen);
+            const results = await Promise.all(chatPromises);
+            results.sort((a,b) => (b.chat.lastTimestamp?.seconds || 0) - (a.chat.lastTimestamp?.seconds || 0));
+
+            list.innerHTML = "";
+            results.forEach(({id, chat, u, otherUid}) => {
+                if(!u) return;
+
+                const isUnread = (chat.lastSender !== myUid && chat.seen === false);
                 const amIFollowing = myFollowingList.includes(otherUid);
+                
+                // FIXED: Prioritizing 'name' field as per Firestore structure
+                const finalDisplayName = u.name || u.displayName || u.username;
 
-                html += `
-                    <div class="chat-item" onclick="location.href='chat.html?user=${u.username}'">
-                        <img src="${u.photoURL || 'https://via.placeholder.com/150'}" class="chat-pfp">
-                        <div class="chat-info">
-                            <div class="chat-top-row">
-                                <span class="u-name">${u.username} ${u.verified ? `<img src="${V_URL}" class="v-badge">` : ''}</span>
-                                <span style="font-size:0.7rem; color:#444;">${chat.lastTimestamp ? formatTime(chat.lastTimestamp.toDate()) : ''}</span>
+                const item = document.createElement('div');
+                item.className = 'chat-item';
+                item.onclick = () => location.href=`chat.html?user=${u.username}`;
+                
+                item.innerHTML = `
+                    <img src="${u.photoURL || 'https://via.placeholder.com/150'}" class="chat-pfp">
+                    <div class="chat-info">
+                        <div class="chat-top-row">
+                            <span class="u-name">
+                                ${finalDisplayName} 
+                                ${u.verified ? `<img src="${V_URL}" class="v-badge">` : ''}
+                            </span>
+                            <span style="font-size:0.7rem; color:#444;">${chat.lastTimestamp ? formatTime(chat.lastTimestamp.toDate()) : ''}</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div class="last-msg" id="last-msg-${id}" style="${isUnread ? 'color:#fff; font-weight:700;' : ''}">
+                                ${chat.lastMessage || 'New connection started'}
                             </div>
-                            <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <div class="last-msg" style="${isUnread ? 'color:#fff; font-weight:700;' : ''}">
-                                    ${chat.lastMessage || 'New connection started'}
-                                </div>
-                                <div style="display:flex; align-items:center; gap:10px;">
-                                    ${!amIFollowing ? `<button class="follow-btn" onclick="followUser(event, '${otherUid}')">Follow</button>` : ''}
-                                    ${isUnread ? `<div class="unread-dot"></div>` : ''}
-                                </div>
+                            <div style="display:flex; align-items:center; gap:10px;" id="meta-${id}">
+                                ${!amIFollowing ? `<button class="follow-btn" onclick="followUser(event, '${otherUid}')">Follow</button>` : ''}
+                                ${isUnread ? `<div class="unread-dot"></div>` : ''}
                             </div>
                         </div>
                     </div>
                 `;
-            }
-            list.innerHTML = html || "<p style='text-align:center; padding:50px; color:#444;'>No transmissions found.</p>";
+                list.appendChild(item);
+
+                rdb.ref(`typing/${id}/${otherUid}`).on('value', s => {
+                    const msgEl = document.getElementById(`last-msg-${id}`);
+                    if(!msgEl) return;
+                    if(s.val() === true) {
+                        msgEl.innerHTML = `<span class="typing-text">typing...</span>`;
+                    } else {
+                        msgEl.innerText = chat.lastMessage || 'New connection started';
+                    }
+                });
+            });
+
+            if(results.length === 0) list.innerHTML = "<p style='text-align:center; padding:50px; color:#444;'>No transmissions found.</p>";
         });
     }
 
@@ -169,7 +214,6 @@
             following: firebase.firestore.FieldValue.arrayUnion(uid)
         });
         myFollowingList.push(uid);
-        listenToInbox();
     }
 
     function searchUsers(val) {
@@ -178,24 +222,31 @@
         if(val.length < 1) { results.style.display = 'none'; content.style.display = 'block'; return; }
         results.style.display = 'block'; content.style.display = 'none';
 
-        db.collection("users").where("username", ">=", val.toLowerCase()).limit(10).get().then(snap => {
+        const queryText = val.toLowerCase();
+        db.collection("users").where("username", ">=", queryText).where("username", "<=", queryText + '\uf8ff').limit(10).get().then(snap => {
             results.innerHTML = snap.docs.map(doc => {
                 const u = doc.data();
+                if(doc.id === myUid) return '';
+                
+                // FIXED: Use 'name' for search results
+                const searchName = u.name || u.displayName || u.username;
+
                 return `
                     <div class="chat-item" onclick="location.href='chat.html?user=${u.username}'">
-                        <img src="${u.photoURL}" class="chat-pfp" style="width:40px; height:40px;">
+                        <img src="${u.photoURL || 'https://via.placeholder.com/150'}" class="chat-pfp" style="width:40px; height:40px;">
                         <div class="chat-info">
-                            <div class="u-name">${u.username}</div>
-                            <div style="font-size:0.8rem; color:#555;">Start messaging...</div>
+                            <div class="u-name">${searchName} ${u.verified ? `<img src="${V_URL}" class="v-badge">` : ''}</div>
+                            <div style="font-size:0.8rem; color:#555;">@${u.username}</div>
                         </div>
-                    </div>
-                `;
+                    </div>`;
             }).join('');
         });
     }
 
     function formatTime(date) {
         const now = new Date();
+        const diff = (now - date) / 1000;
+        if(diff < 60) return 'Just now';
         if(date.toDateString() === now.toDateString()) return date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
         return date.toLocaleDateString([], {month:'short', day:'numeric'});
     }
