@@ -7,87 +7,38 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <style>
-        :root {
-            --bg: #000;
-            --accent: #00d2ff;
-            --border: rgba(255, 255, 255, 0.1);
-            --sent: #00d2ff;
-            --received: #1a1a1a;
-        }
-
+        :root { --bg: #000; --accent: #00d2ff; --border: rgba(255, 255, 255, 0.1); --sent: #00d2ff; --received: #1a1a1a; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
-        html, body { 
-            height: 100%; margin: 0; padding: 0; 
-            background: var(--bg); color: white;
-            font-family: -apple-system, system-ui, sans-serif;
-            overflow: hidden; position: fixed; width: 100%;
-        }
-
-        .app-container {
-            display: flex; flex-direction: column;
-            height: 100vh; height: -webkit-fill-available;
-        }
-
-        header {
-            padding: 12px 15px; background: rgba(0,0,0,0.95);
-            border-bottom: 1px solid var(--border);
-            display: flex; align-items: center; gap: 12px; z-index: 10;
-        }
+        html, body { height: 100%; margin: 0; padding: 0; background: var(--bg); color: white; font-family: -apple-system, system-ui, sans-serif; overflow: hidden; position: fixed; width: 100%; }
+        .app-container { display: flex; flex-direction: column; height: 100vh; height: -webkit-fill-available; }
+        
+        header { padding: 12px 15px; background: rgba(0,0,0,0.95); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; z-index: 10; }
         .h-pfp { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid var(--accent); }
         .h-name { font-weight: 700; font-size: 1rem; }
-        .h-status { font-size: 0.65rem; letter-spacing: 1px; transition: 0.3s; }
+        .h-status { font-size: 0.65rem; letter-spacing: 0.5px; text-transform: uppercase; }
 
-        #chat-flow {
-            flex: 1; overflow-y: auto; padding: 20px 15px;
-            display: flex; flex-direction: column; gap: 12px;
-            background: #000; -webkit-overflow-scrolling: touch;
-        }
+        #chat-flow { flex: 1; overflow-y: auto; padding: 20px 15px; display: flex; flex-direction: column; gap: 12px; background: #000; -webkit-overflow-scrolling: touch; }
+        #load-more-btn { text-align: center; padding: 10px; font-size: 0.75rem; color: var(--accent); cursor: pointer; display: none; margin-bottom: 10px; font-weight: bold; }
 
-        .msg-wrap { display: flex; flex-direction: column; max-width: 85%; position: relative; }
+        .msg-wrap { display: flex; flex-direction: column; max-width: 85%; position: relative; cursor: pointer; }
         .sent { align-self: flex-end; }
         .received { align-self: flex-start; }
 
-        /* REPLY BUBBLE STYLE */
-        .reply-content {
-            background: rgba(0,0,0,0.15); border-left: 3px solid var(--accent);
-            padding: 6px 10px; border-radius: 8px; font-size: 0.75rem; 
-            margin-bottom: 6px; opacity: 0.8;
-        }
-
-        .bubble {
-            padding: 12px 16px; border-radius: 20px; font-size: 0.95rem;
-            line-height: 1.4; word-wrap: break-word; position: relative;
-        }
+        .reply-content { background: rgba(255,255,255,0.1); border-left: 3px solid var(--accent); padding: 6px 10px; border-radius: 8px; font-size: 0.75rem; margin-bottom: 6px; opacity: 0.8; color: #fff; }
+        .bubble { padding: 12px 16px; border-radius: 20px; font-size: 0.95rem; line-height: 1.4; word-wrap: break-word; }
         .sent .bubble { background: var(--sent); color: #000; border-bottom-right-radius: 4px; font-weight: 500; }
         .received .bubble { background: var(--received); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
 
-        #reply-dock {
-            display: none; background: #0a0a0a; padding: 10px 15px;
-            border-top: 2px solid var(--accent); justify-content: space-between; align-items: center;
-        }
-
+        #reply-dock { display: none; background: #0a0a0a; padding: 10px 15px; border-top: 2px solid var(--accent); justify-content: space-between; align-items: center; }
         .indicator { height: 20px; padding: 0 15px; font-size: 0.75rem; color: var(--accent); font-style: italic; }
 
-        .input-area {
-            background: #000; border-top: 1px solid var(--border);
-            padding: 10px 15px 30px; display: flex; align-items: center; gap: 10px;
-        }
-        .input-box {
-            flex: 1; background: #121212; border: 1px solid var(--border);
-            border-radius: 25px; padding: 0 15px;
-        }
-        .msg-input {
-            width: 100%; background: transparent; border: none; color: white;
-            padding: 12px 0; outline: none; font-size: 1rem;
-        }
-        .send-btn { 
-            background: var(--accent); border: none; width: 42px; height: 42px; 
-            border-radius: 50%; font-weight: 900; cursor: pointer; display: flex;
-            align-items: center; justify-content: center;
-        }
+        .input-area { background: #000; border-top: 1px solid var(--border); padding: 10px 15px 30px; display: flex; align-items: center; gap: 10px; }
+        .input-box { flex: 1; background: #121212; border: 1px solid var(--border); border-radius: 25px; padding: 0 15px; }
+        .msg-input { width: 100%; background: transparent; border: none; color: white; padding: 12px 0; outline: none; font-size: 1rem; }
+        .send-btn { background: var(--accent); border: none; width: 42px; height: 42px; border-radius: 50%; font-weight: 900; cursor: pointer; display: flex; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
@@ -102,12 +53,15 @@
         </div>
     </header>
 
-    <div id="chat-flow"></div>
+    <div id="chat-flow">
+        <div id="load-more-btn" onclick="loadMoreMessages()">↑ Load older messages</div>
+        <div id="messages-container" style="display: flex; flex-direction: column; gap: 12px;"></div>
+    </div>
 
     <div id="typing-indicator" class="indicator"></div>
 
     <div id="reply-dock">
-        <div id="reply-text" style="font-size:0.8rem; color:#888; overflow:hidden; text-overflow:ellipsis;"></div>
+        <div id="reply-text" style="font-size:0.8rem; color:#888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80%;"></div>
         <div onclick="cancelReply()" style="color:var(--accent); font-weight:bold; cursor:pointer; padding:5px;">✕</div>
     </div>
 
@@ -126,25 +80,60 @@
         projectId: "goorac-c3b59",
         storageBucket: "goorac-c3b59.firebasestorage.app",
         messagingSenderId: "746746595332",
-        appId: "1:746746595332:web:d3f8527d27fe8ca2530d51"
+        appId: "1:746746595332:web:d3f8527d27fe8ca2530d51",
+        databaseURL: "https://goorac-c3b59-default-rtdb.firebaseio.com"
     };
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+    const rtdb = firebase.database();
     const auth = firebase.auth();
 
     const params = new URLSearchParams(window.location.search);
     const targetUsername = params.get('user');
     let myUid, targetUid, chatId, replyingTo = null;
-    let displayedMessages = new Set();
+    let lastVisibleDoc = null; 
+    let isFetching = false;
+    const PAGE_LIMIT = 10;
 
     auth.onAuthStateChanged(user => {
         if (user) {
             myUid = user.uid;
-            db.collection("users").doc(myUid).update({ status: "online" });
+            setupPresence(); 
             setupChat();
         } else { location.href='login.html'; }
     });
+
+    // Helper: Formats timestamp to "X ago"
+    function timeAgo(timestamp) {
+        if (!timestamp) return "...";
+        const seconds = Math.floor((Date.now() - timestamp) / 1000);
+        if (seconds < 60) return "just now";
+        let interval = Math.floor(seconds / 3600);
+        if (interval >= 24) {
+            const days = Math.floor(interval / 24);
+            return days === 1 ? "1 day ago" : days + " days ago";
+        }
+        if (interval >= 1) return interval === 1 ? "1 hour ago" : interval + " hours ago";
+        interval = Math.floor(seconds / 60);
+        return interval === 1 ? "1 min ago" : interval + " mins ago";
+    }
+
+    // --- REALTIME PRESENCE LOGIC ---
+    function setupPresence() {
+        const statusRef = rtdb.ref('/status/' + myUid);
+        rtdb.ref('.info/connected').on('value', (snap) => {
+            if (snap.val() === false) return;
+            // When disconnected: Set state and server-side timestamp
+            statusRef.onDisconnect().set({ 
+                state: 'offline', 
+                last_seen: firebase.database.ServerValue.TIMESTAMP 
+            }).then(() => {
+                // When online: Set state
+                statusRef.set({ state: 'online', last_seen: firebase.database.ServerValue.TIMESTAMP });
+            });
+        });
+    }
 
     async function setupChat() {
         const snap = await db.collection("users").where("username", "==", targetUsername).get();
@@ -157,103 +146,106 @@
         document.getElementById('h-name').innerText = targetData.username;
         document.getElementById('h-pfp').src = targetData.photoURL || 'https://via.placeholder.com/150';
 
-        // REAL-TIME STATUS FIX
-        db.collection("users").doc(targetUid).onSnapshot(doc => {
-            const u = doc.data();
+        // Listen for target user's online status & last seen
+        rtdb.ref('/status/' + targetUid).on('value', (snapshot) => {
+            const status = snapshot.val();
             const statusEl = document.getElementById('h-status');
-            if (u.status === "online") {
+            if (status && status.state === "online") {
                 statusEl.innerHTML = `<span style="color: #00ff00;">●</span> ACTIVE NOW`;
+            } else if (status && status.last_seen) {
+                statusEl.innerHTML = `<span style="color: #888;">●</span> LAST SEEN ${timeAgo(status.last_seen)}`;
             } else {
                 statusEl.innerHTML = `<span style="color: #555;">●</span> OFFLINE`;
             }
         });
 
-        // Listen for messages
-        db.collection("chats").doc(chatId).collection("messages").orderBy("timestamp", "asc").onSnapshot(s => {
-            s.docChanges().forEach(change => {
-                if (change.type === "added") render(change.doc.data(), change.doc.id);
-            });
-            scrollToBottom();
-        });
-
-        // Typing Indicator
+        // Typing listener
         db.collection("chats").doc(chatId).onSnapshot(doc => {
-            if(doc.data()?.typing === targetUid) {
-                document.getElementById('typing-indicator').innerText = 'typing...';
-            } else {
-                document.getElementById('typing-indicator').innerText = '';
+            const isTyping = doc.data()?.typing === targetUid;
+            if (isTyping) {
+                document.getElementById('h-status').innerHTML = `<span style="color: #00ff00;">●</span> TYPING...`;
             }
         });
+
+        loadMoreMessages(true);
+
+        db.collection("chats").doc(chatId).collection("messages")
+          .orderBy("timestamp", "desc").limit(1)
+          .onSnapshot(s => {
+              s.docChanges().forEach(change => {
+                  if (change.type === "added") {
+                      const m = change.doc.data();
+                      if (m.timestamp && (Date.now() - m.timestamp.toMillis() < 5000)) {
+                          render(m, change.doc.id, false);
+                          scrollToBottom();
+                      }
+                  }
+              });
+          });
     }
 
-    function render(m, id) {
-        if (displayedMessages.has(id)) return;
-        displayedMessages.add(id);
-
+    // --- Message handling logic (Keep your existing functions below) ---
+    async function loadMoreMessages(isInitial = false) {
+        if (isFetching) return;
+        isFetching = true;
+        let query = db.collection("chats").doc(chatId).collection("messages").orderBy("timestamp", "desc").limit(PAGE_LIMIT);
+        if (lastVisibleDoc) query = query.startAfter(lastVisibleDoc);
+        const snap = await query.get();
+        if (snap.empty) { isFetching = false; document.getElementById('load-more-btn').style.display = 'none'; return; }
+        lastVisibleDoc = snap.docs[snap.docs.length - 1];
+        document.getElementById('load-more-btn').style.display = snap.docs.length === PAGE_LIMIT ? 'block' : 'none';
         const flow = document.getElementById('chat-flow');
+        const oldScrollHeight = flow.scrollHeight;
+        const messages = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).reverse();
+        messages.forEach(m => render(m, m.id, true));
+        if (isInitial) scrollToBottom();
+        else flow.scrollTop = flow.scrollHeight - oldScrollHeight;
+        isFetching = false;
+    }
+
+    function render(m, id, prepend) {
+        if (document.getElementById(id)) return;
+        const container = document.getElementById('messages-container');
         const side = m.sender === myUid ? 'sent' : 'received';
         const div = document.createElement('div');
-        div.className = `msg-wrap ${side}`;
-        
-        // Tap message to Reply
+        div.id = id; div.className = `msg-wrap ${side}`;
         div.onclick = () => {
             replyingTo = m.text;
             document.getElementById('reply-dock').style.display = 'flex';
             document.getElementById('reply-text').innerText = `Replying to: ${m.text}`;
             document.getElementById('m-input').focus();
         };
-
         let replyHtml = m.replyTo ? `<div class="reply-content">${m.replyTo}</div>` : '';
         div.innerHTML = `<div class="bubble">${replyHtml}${m.text}</div>`;
-        flow.appendChild(div);
-    }
-
-    function cancelReply() {
-        replyingTo = null;
-        document.getElementById('reply-dock').style.display = 'none';
+        if (prepend) container.prepend(div); else container.appendChild(div);
     }
 
     async function sendMsg() {
         const input = document.getElementById('m-input');
         const text = input.value.trim();
         if (!text) return;
-
         const serverTime = firebase.firestore.FieldValue.serverTimestamp();
         const msgData = { text, sender: myUid, timestamp: serverTime, replyTo: replyingTo };
-
-        input.value = "";
-        cancelReply();
-        input.focus(); // STABILIZE KEYBOARD
-
+        render(msgData, 'temp_' + Date.now(), false);
+        scrollToBottom();
+        input.value = ""; cancelReply();
         const batch = db.batch();
         batch.set(db.collection("chats").doc(chatId).collection("messages").doc(), msgData);
-        batch.set(db.collection("chats").doc(chatId), {
-            lastMessage: text,
-            lastTimestamp: serverTime,
-            lastSender: myUid,
-            typing: null
-        }, { merge: true });
-
+        batch.set(db.collection("chats").doc(chatId), { lastMessage: text, lastTimestamp: serverTime, lastSender: myUid, typing: null }, { merge: true });
         await batch.commit();
     }
 
-    // Keyboard & Typing Detection
-    document.getElementById('m-input').addEventListener('keydown', e => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            sendMsg();
-        }
+    function cancelReply() { replyingTo = null; document.getElementById('reply-dock').style.display = 'none'; }
+
+    document.getElementById('m-input').addEventListener('input', () => {
         db.collection("chats").doc(chatId).update({ typing: myUid });
+        clearTimeout(window.typingTimer);
+        window.typingTimer = setTimeout(() => { db.collection("chats").doc(chatId).update({ typing: null }); }, 3000);
     });
 
-    function scrollToBottom() {
-        const flow = document.getElementById('chat-flow');
-        flow.scrollTop = flow.scrollHeight;
-    }
+    document.getElementById('m-input').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); sendMsg(); } });
 
-    window.addEventListener('beforeunload', () => {
-        if(myUid) db.collection("users").doc(myUid).update({ status: "offline" });
-    });
+    function scrollToBottom() { const flow = document.getElementById('chat-flow'); flow.scrollTop = flow.scrollHeight; }
 </script>
 </body>
 </html>
