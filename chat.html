@@ -27,7 +27,6 @@
             overflow: hidden; position: fixed; 
         }
 
-        /* Prevents iOS zoom and handles full-screen layout */
         input { 
             -webkit-user-select: text !important; 
             user-select: text !important; 
@@ -47,8 +46,20 @@
         .h-name { font-weight: 700; font-size: 0.95rem; }
         .h-status { font-size: 0.7rem; color: var(--accent); height: 14px; font-weight: bold; transition: opacity 0.2s; }
 
-        #chat-flow { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; -webkit-overflow-scrolling: touch; }
+        #chat-flow { 
+            flex: 1; overflow-y: auto; padding: 15px; 
+            display: flex; flex-direction: column-reverse; 
+            -webkit-overflow-scrolling: touch; 
+        }
         
+        #messages-container { display: flex; flex-direction: column; }
+
+        /* The loading trigger at the top of the container */
+        #scroll-trigger {
+            text-align: center; padding: 20px; color: var(--accent); 
+            font-size: 0.8rem; font-weight: bold; opacity: 0.6;
+        }
+
         .msg-wrap { 
             display: flex; flex-direction: column; max-width: 82%; margin-bottom: 22px; 
             position: relative; will-change: transform;
@@ -112,7 +123,7 @@
 
 <div class="app-container" id="main-app">
     <header>
-        <div onclick="history.back()" style="font-size: 1.8rem; padding-right:10px;">‹</div>
+        <div onclick="history.back()" style="font-size: 1.8rem; padding-right:10px; cursor:pointer">‹</div>
         <img id="h-pfp" src="" class="h-pfp">
         <div class="h-info">
             <div class="h-name" id="h-name">...</div>
@@ -121,7 +132,8 @@
     </header>
 
     <div id="chat-flow">
-        <div id="messages-container" style="display:flex; flex-direction:column;"></div>
+        <div id="messages-container"></div>
+        <div id="scroll-trigger">● ● ●</div>
     </div>
 
     <div id="reply-dock">
@@ -138,7 +150,6 @@
 </div>
 
 <script>
-    // --- FIREBASE CONFIG ---
     const firebaseConfig = {
         apiKey: "AIzaSyCFzAEHC5KLiO2DEkVtoTlFn9zeCQrwImE",
         authDomain: "goorac-c3b59.firebaseapp.com",
@@ -157,33 +168,15 @@
     const params = new URLSearchParams(window.location.search);
     const targetUsername = params.get('user');
     let myUid, targetUid, chatId, replyingTo = null, editModeId = null;
-    let firstLoad = true, activeMenuId = null, isCurrentlyTyping = false;
+    let activeMenuId = null, msgLimit = 15, unsubscribe = null, isLoadingMore = false;
 
-    // --- UTILITIES ---
     const mInput = document.getElementById('m-input');
+    const chatFlow = document.getElementById('chat-flow');
+    const container = document.getElementById('messages-container');
     window.oncontextmenu = (e) => { e.preventDefault(); return false; };
 
-    function vibrate(ms = 50) {
-        if (navigator.vibrate) navigator.vibrate(ms);
-    }
+    function vibrate(ms = 50) { if (navigator.vibrate) navigator.vibrate(ms); }
 
-    function toggleFullscreen() {
-        const elem = document.documentElement;
-        if (!document.fullscreenElement) {
-            if (elem.requestFullscreen) elem.requestFullscreen();
-            else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
-            else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
-        }
-    }
-
-    mInput.addEventListener('click', toggleFullscreen);
-
-    function scrollToBottom() { 
-        const f = document.getElementById('chat-flow'); 
-        f.scrollTo({ top: f.scrollHeight, behavior: firstLoad ? 'auto' : 'smooth' }); 
-    }
-
-    // --- AUTH & CHAT INIT ---
     auth.onAuthStateChanged(user => {
         if (user) { myUid = user.uid; initChat(); }
         else { window.location.href = 'login.html'; }
@@ -206,22 +199,54 @@
             statusEl.style.opacity = s.val() ? '1' : '0';
         });
 
-        db.collection("chats").doc(chatId).collection("messages").orderBy("timestamp", "asc")
+        startListener();
+        setupObserver();
+    }
+
+    function setupObserver() {
+        const observer = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting && !isLoadingMore && container.children.length >= msgLimit) {
+                isLoadingMore = true;
+                msgLimit += 10;
+                startListener();
+            }
+        }, { root: chatFlow, threshold: 0.1 });
+        observer.observe(document.getElementById('scroll-trigger'));
+    }
+
+    function startListener() {
+        if (unsubscribe) unsubscribe();
+        
+        unsubscribe = db.collection("chats").doc(chatId).collection("messages")
+            .orderBy("timestamp", "desc")
+            .limit(msgLimit)
             .onSnapshot(snapshot => {
-                snapshot.docChanges().forEach(change => {
-                    const data = change.doc.data();
-                    const id = change.doc.id;
-                    if (change.type === "added") renderMessage(data, id);
-                    if (change.type === "modified") updateUI(id, data);
-                    if (change.type === "removed") document.getElementById(id)?.remove();
+                // Save scroll position metadata
+                const previousHeight = chatFlow.scrollHeight;
+                const previousScroll = chatFlow.scrollTop;
+
+                container.innerHTML = '';
+                const docs = [];
+                snapshot.forEach(doc => docs.push({id: doc.id, data: doc.data()}));
+                
+                docs.reverse().forEach(item => {
+                    renderMessage(item.data, item.id);
+                    if(item.data.sender !== myUid && !item.data.seen) {
+                        db.collection("chats").doc(chatId).collection("messages").doc(item.id).update({ seen: true });
+                    }
                 });
-                if (firstLoad) { setTimeout(scrollToBottom, 200); firstLoad = false; }
+
+                // Maintain scroll position after DOM update
+                if (isLoadingMore) {
+                    setTimeout(() => {
+                        chatFlow.scrollTop = previousScroll + (chatFlow.scrollHeight - previousHeight);
+                        isLoadingMore = false;
+                    }, 0);
+                }
             });
     }
 
     function renderMessage(m, id) {
-        if (document.getElementById(id)) return;
-        const container = document.getElementById('messages-container');
         const side = m.sender === myUid ? 'sent' : 'received';
         const date = m.timestamp ? m.timestamp.toDate() : new Date();
 
@@ -229,17 +254,19 @@
         div.id = id;
         div.className = `msg-wrap ${side}`;
         
+        div.addEventListener('dblclick', (e) => {
+            e.preventDefault();
+            vibrate(40);
+            applyReactionToId(id, m.reaction === '❤️' ? '' : '❤️');
+        });
+
         let startX = 0, currentX = 0, menuTimer = null, isMoving = false, swipeTriggered = false;
 
         div.addEventListener('touchstart', (e) => {
             startX = e.touches[0].clientX;
-            isMoving = false;
-            swipeTriggered = false;
+            isMoving = false; swipeTriggered = false;
             menuTimer = setTimeout(() => {
-                if (!isMoving) {
-                    vibrate(70); 
-                    openMenu(id, m.sender, m.text);
-                }
+                if (!isMoving) { vibrate(70); openMenu(id, m.sender, m.text); }
             }, 600);
         }, {passive: true});
 
@@ -247,15 +274,10 @@
             currentX = e.touches[0].clientX;
             let diff = currentX - startX;
             if (Math.abs(diff) > 10) isMoving = true;
-
             if (diff > 0 && diff < 100) {
                 div.querySelector('.bubble').style.transform = `translateX(${diff}px)`;
                 div.querySelector('.bubble').style.transition = "none";
-                
-                if (diff > 65 && !swipeTriggered) {
-                    vibrate(30); 
-                    swipeTriggered = true;
-                }
+                if (diff > 65 && !swipeTriggered) { vibrate(30); swipeTriggered = true; }
             }
         }, {passive: true});
 
@@ -265,33 +287,23 @@
             const bubble = div.querySelector('.bubble');
             bubble.style.transition = "transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)";
             bubble.style.transform = `translateX(0px)`;
-            
             if (diff > 65) triggerReply(m.text);
             startX = 0; currentX = 0;
         });
 
-        div.ondblclick = (e) => {
-            e.preventDefault();
-            vibrate(40);
-            const badge = document.getElementById(`react-${id}`);
-            applyReactionToId(id, badge.innerText === "❤️" ? "" : "❤️");
-        };
-
         div.innerHTML = `
             ${m.replyTo ? `<div class="reply-box-ui">⤴ ${m.replyTo}</div>` : ''}
             <div class="bubble">
-                <span id="text-${id}">${m.text}</span>
-                <div id="react-${id}" class="reaction-badge"></div>
+                <span id="text-${id}">${m.text} ${m.edited ? '<small style="opacity:0.3;font-size:0.6rem">(edited)</small>' : ''}</span>
+                <div id="react-${id}" class="reaction-badge" style="${m.reaction ? 'display:block' : ''}">${m.reaction || ''}</div>
             </div>
             <div class="meta">
                 ${date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
-                ${side === 'sent' ? `<span id="seen-${id}" class="seen">${m.seen ? 'Seen' : '✓'}</span>` : ''}
+                ${side === 'sent' ? `<span class="seen">${m.seen ? 'Seen' : '✓'}</span>` : ''}
             </div>
         `;
 
         container.appendChild(div);
-        updateUI(id, m);
-        if(!firstLoad) scrollToBottom();
     }
 
     function triggerReply(text) {
@@ -299,21 +311,6 @@
         document.getElementById('reply-text').innerText = replyingTo;
         document.getElementById('reply-dock').style.display = 'flex';
         mInput.focus();
-    }
-
-    function initReplyFromActive() {
-        triggerReply(document.getElementById('text-'+activeMenuId).innerText);
-        closeMenu();
-    }
-
-    function updateUI(id, data) {
-        const textSpan = document.getElementById(`text-${id}`);
-        if (textSpan) textSpan.innerHTML = data.text + (data.edited ? ' <small style="opacity:0.3;font-size:0.6rem">(edited)</small>' : '');
-        const badge = document.getElementById(`react-${id}`);
-        if (badge) { badge.innerText = data.reaction || ""; badge.style.display = data.reaction ? "block" : "none"; }
-        const seenSpan = document.getElementById(`seen-${id}`);
-        if (seenSpan && data.seen) seenSpan.innerText = "Seen";
-        if(data.sender !== myUid && !data.seen) { db.collection("chats").doc(chatId).collection("messages").doc(id).update({ seen: true }); }
     }
 
     async function sendMsg() {
@@ -329,8 +326,8 @@
                 replyTo: rText, seen: false, reaction: ""
             });
         }
-        mInput.value = ""; rdb.ref(`typing/${chatId}/${myUid}`).set(false);
-        scrollToBottom();
+        mInput.value = "";
+        rdb.ref(`typing/${chatId}/${myUid}`).set(false);
     }
 
     function openMenu(id, sender, text) {
@@ -341,22 +338,38 @@
         document.getElementById('menu-overlay').style.display = 'flex';
     }
 
-    function applyReaction(emoji) {
-        if (activeMenuId) {
-            const current = document.getElementById(`react-${activeMenuId}`).innerText;
-            applyReactionToId(activeMenuId, current === emoji ? "" : emoji);
-        }
+    async function applyReaction(emoji) {
+        if (!activeMenuId) return;
+        const msgRef = db.collection("chats").doc(chatId).collection("messages").doc(activeMenuId);
+        const doc = await msgRef.get();
+        const currentReaction = doc.data().reaction;
+        await msgRef.update({ reaction: currentReaction === emoji ? "" : emoji });
         closeMenu();
     }
 
-    function applyReactionToId(id, emoji) { db.collection("chats").doc(chatId).collection("messages").doc(id).update({ reaction: emoji }); }
+    async function applyReactionToId(id, emoji) {
+        await db.collection("chats").doc(chatId).collection("messages").doc(id).update({ reaction: emoji });
+    }
+
+    function initReplyFromActive() {
+        triggerReply(document.getElementById('text-'+activeMenuId).innerText.split('(edited)')[0].trim());
+        closeMenu();
+    }
+
     function closeMenu() { document.getElementById('menu-overlay').style.display = 'none'; }
     function cancelReply() { replyingTo = null; document.getElementById('reply-dock').style.display = 'none'; }
+    
     function initEdit() {
-        mInput.value = document.getElementById('text-'+activeMenuId).innerText.replace('(edited)', '').trim();
+        mInput.value = document.getElementById('text-'+activeMenuId).innerText.split('(edited)')[0].trim();
         editModeId = activeMenuId; closeMenu(); mInput.focus();
     }
-    async function unsendMsg() { if(activeMenuId) db.collection("chats").doc(chatId).collection("messages").doc(activeMenuId).delete(); closeMenu(); }
+
+    async function unsendMsg() { 
+        if(activeMenuId) db.collection("chats").doc(chatId).collection("messages").doc(activeMenuId).delete(); 
+        closeMenu(); 
+    }
+
+    mInput.oninput = () => rdb.ref(`typing/${chatId}/${myUid}`).set(mInput.value.length > 0);
 </script>
 </body>
 </html>
