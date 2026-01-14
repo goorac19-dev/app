@@ -41,6 +41,8 @@
             display: flex; align-items: center; gap: 12px; z-index: 100; backdrop-filter: blur(10px);
             flex-shrink: 0;
         }
+        /* Clickable Profile Container */
+        .h-profile-group { display: flex; align-items: center; gap: 12px; cursor: pointer; flex: 1; }
         .h-pfp { width: 38px; height: 38px; border-radius: 50%; border: 1.5px solid var(--accent); object-fit: cover; }
         .h-info { display: flex; flex-direction: column; }
         .h-name { font-weight: 700; font-size: 0.95rem; }
@@ -144,9 +146,11 @@
 <div class="app-container" id="main-app">
     <header>
         <div onclick="history.back()" style="font-size: 1.8rem; padding-right:10px; cursor:pointer">‹</div>
-        <img id="h-pfp" src="" class="h-pfp">
-        <div class="h-info">
-            <div class="h-name" id="h-name">...</div>
+        <div class="h-profile-group" onclick="goToProfile()">
+            <img id="h-pfp" src="" class="h-pfp">
+            <div class="h-info">
+                <div class="h-name" id="h-name">...</div>
+            </div>
         </div>
     </header>
 
@@ -199,6 +203,20 @@
 
     function vibrate(ms = 50) { if (navigator.vibrate) navigator.vibrate(ms); }
 
+    function goToProfile() {
+        if(targetUsername) {
+            window.location.href = `userProfile.html?user=${targetUsername}`;
+        }
+    }
+
+    // Enter to send logic
+    mInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            sendMsg();
+        }
+    });
+
     auth.onAuthStateChanged(user => {
         if (user) { myUid = user.uid; initChat(); }
         else { window.location.href = 'login.html'; }
@@ -215,7 +233,6 @@
         document.getElementById('h-name').innerText = targetData.username;
         document.getElementById('h-pfp').src = targetData.photoURL || 'https://via.placeholder.com/150';
 
-        // Bottom Typing Listener
         rdb.ref(`typing/${chatId}/${targetUid}`).on('value', (s) => {
             const isTyping = s.val();
             bottomTyping.style.display = isTyping ? 'block' : 'none';
@@ -281,6 +298,7 @@
             e.preventDefault();
             vibrate(40);
             applyReactionToId(id, m.reaction === '❤️' ? '' : '❤️');
+            mInput.focus(); // Keep keyboard open
         });
 
         let startX = 0, currentX = 0, menuTimer = null, isMoving = false, swipeTriggered = false;
@@ -304,7 +322,7 @@
             }
         }, {passive: true});
 
-        div.addEventListener('touchend', () => {
+        div.addEventListener('touchend', (e) => {
             clearTimeout(menuTimer);
             let diff = currentX - startX;
             const bubble = div.querySelector('.bubble');
@@ -312,6 +330,7 @@
             bubble.style.transform = `translateX(0px)`;
             if (diff > 65) triggerReply(m.text);
             startX = 0; currentX = 0;
+            if (!isMoving) mInput.focus(); // Keep keyboard open on tap
         });
 
         div.innerHTML = `
@@ -351,6 +370,7 @@
             });
         }
         mInput.value = "";
+        mInput.focus(); // Keep keyboard open after sending
     }
 
     function openMenu(id, sender, text) {
@@ -368,6 +388,7 @@
         const currentReaction = doc.data().reaction;
         await msgRef.update({ reaction: currentReaction === emoji ? "" : emoji });
         closeMenu();
+        mInput.focus();
     }
 
     async function applyReactionToId(id, emoji) {
@@ -379,8 +400,11 @@
         closeMenu();
     }
 
-    function closeMenu() { document.getElementById('menu-overlay').style.display = 'none'; }
-    function cancelReply() { replyingTo = null; document.getElementById('reply-dock').style.display = 'none'; }
+    function closeMenu() { 
+        document.getElementById('menu-overlay').style.display = 'none'; 
+        mInput.focus();
+    }
+    function cancelReply() { replyingTo = null; document.getElementById('reply-dock').style.display = 'none'; mInput.focus();}
     
     function initEdit() {
         mInput.value = document.getElementById('text-'+activeMenuId).innerText.split('(edited)')[0].trim();
