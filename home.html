@@ -4,70 +4,104 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Goorac | Home</title>
+    
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
 
     <style>
         :root {
             --bg: #000;
             --accent: #00d2ff;
-            --card: #111;
-            --border: rgba(255,255,255,0.1);
+            --card-grad: linear-gradient(145deg, #111 0%, #050505 100%);
+            --border: rgba(255, 255, 255, 0.08);
+            --nav-bg: rgba(15, 15, 15, 0.8);
         }
 
         body {
             background-color: var(--bg);
             color: white;
-            font-family: 'Inter', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             margin: 0;
             padding-bottom: 80px;
+            overflow-x: hidden;
         }
 
+        /* --- Slim Professional Header --- */
         header {
-            padding: 15px 20px;
+            padding: 12px 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            backdrop-filter: blur(10px);
+            backdrop-filter: blur(20px);
+            background: rgba(0,0,0,0.7);
             position: sticky;
             top: 0;
             border-bottom: 1px solid var(--border);
-            z-index: 100;
+            z-index: 1000;
         }
 
-        .logo { font-size: 1.5rem; font-weight: 900; color: var(--accent); }
-        .header-pfp { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; }
-
-        /* Home Content Area */
-        .content {
-            padding: 20px;
-            text-align: center;
+        .logo { 
+            font-size: 1.3rem; 
+            font-weight: 800; 
+            color: var(--accent); 
+            letter-spacing: -1px;
+            text-transform: uppercase;
         }
 
+        .header-pfp { 
+            width: 32px; 
+            height: 32px; 
+            border-radius: 50%; 
+            object-fit: cover; 
+            border: 1.5px solid var(--border);
+            transition: 0.2s;
+        }
+
+        /* --- Skeleton Loading Animation --- */
+        .skeleton {
+            background: linear-gradient(90deg, #111 25%, #1a1a1a 50%, #111 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+            border-radius: 12px;
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .content { padding: 20px; max-width: 500px; margin: 0 auto; }
+
+        /* --- Professional Card --- */
         .welcome-card {
-            background: linear-gradient(135deg, #111, #000);
+            background: var(--card-grad);
             border: 1px solid var(--border);
-            padding: 40px 20px;
-            border-radius: 30px;
-            margin-top: 20px;
+            padding: 25px;
+            border-radius: 20px;
+            transition: opacity 0.4s ease;
         }
 
-        .welcome-card h1 { margin: 0; font-size: 1.8rem; }
-        .welcome-card p { color: #888; margin-top: 10px; }
+        .welcome-card h1 { margin: 0; font-size: 1.5rem; font-weight: 700; letter-spacing: -0.5px; }
+        .welcome-card p { color: #777; margin-top: 8px; font-size: 0.9rem; line-height: 1.5; }
 
-        /* Bottom Navigation Bar */
+        /* --- Slim Professional Bottom Nav --- */
         .bottom-nav {
             position: fixed;
-            bottom: 0;
-            width: 100%;
-            background: rgba(0,0,0,0.8);
-            backdrop-filter: blur(20px);
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: fit-content;
+            background: var(--nav-bg);
+            backdrop-filter: blur(25px);
             display: flex;
-            justify-content: space-around;
-            padding: 15px 0;
-            border-top: 1px solid var(--border);
-            z-index: 1000;
+            gap: 15px;
+            padding: 8px 25px;
+            border-radius: 40px;
+            border: 1px solid var(--border);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            z-index: 10000;
         }
 
         .nav-item {
@@ -76,52 +110,47 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            font-size: 0.7rem;
-            gap: 5px;
+            padding: 6px 12px;
+            transition: 0.3s;
         }
 
-        .nav-item.active { color: var(--accent); }
-        .nav-item i { font-size: 1.6rem; font-style: normal; }
+        .nav-item i { font-size: 1.2rem; font-style: normal; margin-bottom: 2px; }
+        .nav-item span { font-size: 0.6rem; font-weight: 600; opacity: 0.7; }
 
+        .nav-item.active { color: var(--accent); }
+        .nav-item.active span { opacity: 1; }
+
+        /* --- Full Screen Loading Cover --- */
         #loader {
             position: fixed; inset: 0; background: #000;
             display: flex; justify-content: center; align-items: center; z-index: 9999;
+            transition: opacity 0.5s ease;
         }
     </style>
 </head>
 <body>
 
-<div id="loader">Loading Goorac...</div>
+<div id="loader">
+    <div style="width: 20px; height: 20px; border: 2px solid var(--accent); border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite;"></div>
+</div>
 
 <header>
-    <div class="logo">Goorac</div>
-    <img id="header-pfp" src="" class="header-pfp" onclick="window.location.href='profile.html'">
+    <div class="logo">GOORAC</div>
+    <img id="header-pfp" src="" class="header-pfp skeleton" style="width: 32px; height: 32px;" onclick="window.location.href='profile.html'">
 </header>
 
 <div class="content">
-    <div class="welcome-card">
-        <h1 id="welcome-name">Hello!</h1>
-        <p>Welcome to your Goorac dashboard. Stay connected with your global ID.</p>
-    </div>
-    
-    <div style="margin-top: 30px; color: #444;">
-        <p>No new updates in your area.</p>
+    <div id="welcome-box" class="welcome-card">
+        <h1 id="welcome-name" class="skeleton" style="height: 30px; width: 60%;"></h1>
+        <p id="welcome-text" class="skeleton" style="height: 45px; width: 100%; margin-top: 15px;"></p>
     </div>
 </div>
 
 <nav class="bottom-nav">
-    <a href="home.html" class="nav-item active">
-        <i>🏠</i><span>Home</span>
-    </a>
-    <a href="messages.html" class="nav-item">
-        <i>💬</i><span>Messages</span>
-    </a>
-    <a href="add-contact.html" class="nav-item">
-        <i>🔍</i><span>Search</span>
-    </a>
-    <a href="profile.html" class="nav-item">
-        <i>👤</i><span>Profile</span>
-    </a>
+    <a href="home.html" class="nav-item active"><i>🏠</i><span>Home</span></a>
+    <a href="messages.html" class="nav-item"><i>💬</i><span>Chats</span></a>
+    <a href="add-contact.html" class="nav-item"><i>🔍</i><span>Search</span></a>
+    <a href="calls.html" class="nav-item"><i>📞</i><span>Calls</span></a>
 </nav>
 
 <script>
@@ -137,15 +166,32 @@
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
+    const messaging = firebase.messaging();
 
     auth.onAuthStateChanged(async (user) => {
         if (user) {
             const doc = await db.collection("users").doc(user.uid).get();
             if (doc.exists) {
                 const data = doc.data();
-                document.getElementById('welcome-name').innerText = "Hello, " + data.name + "!";
-                document.getElementById('header-pfp').src = data.photoURL;
-                document.getElementById('loader').style.display = 'none';
+                
+                // Remove skeleton and add data
+                const nameEl = document.getElementById('welcome-name');
+                const textEl = document.getElementById('welcome-text');
+                const pfpEl = document.getElementById('header-pfp');
+
+                nameEl.classList.remove('skeleton');
+                nameEl.innerText = "Hello, " + (data.name || "User");
+                
+                textEl.classList.remove('skeleton');
+                textEl.innerText = "Your Goorac dashboard is secure. Stay connected with your contacts globally.";
+                
+                pfpEl.classList.remove('skeleton');
+                pfpEl.src = data.photoURL || 'https://via.placeholder.com/150';
+
+                document.getElementById('loader').style.opacity = '0';
+                setTimeout(() => document.getElementById('loader').remove(), 500);
+
+                setupPushNotifications(user.uid);
             } else {
                 window.location.href = "setup.html";
             }
@@ -153,7 +199,25 @@
             window.location.href = "login.html";
         }
     });
+
+    async function setupPushNotifications(uid) {
+        try {
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+                const token = await messaging.getToken({ 
+                    vapidKey: 'BK6JYY6xyi32Bw4mnj79pO2zSBIlbVmim9feMo6OleXwqLoI9yHKXnXgs5QtYZTQtUfZxj2U-jaWc57GgOlmX_M' 
+                });
+                if (token) {
+                    await db.collection("users").doc(uid).update({ fcmToken: token });
+                }
+            }
+        } catch (err) {}
+    }
 </script>
+
+<style>
+    @keyframes spin { to { transform: rotate(360deg); } }
+</style>
 
 </body>
 </html>

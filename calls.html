@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Goorac | Quantum Calls</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <style>
+        :root {
+            --bg: #000;
+            --accent: #00d2ff;
+            --border: rgba(255, 255, 255, 0.1);
+            --text-dim: #888;
+            --danger: #ff4444;
+        }
+
+        body {
+            background: var(--bg); color: white; margin: 0;
+            font-family: -apple-system, system-ui, sans-serif;
+            padding-bottom: 100px; overflow-x: hidden;
+        }
+
+        header {
+            position: sticky; top: 0; background: rgba(0,0,0,0.9);
+            padding: 15px 20px; border-bottom: 1px solid var(--border); z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+        .header-logo { font-weight: 900; font-size: 1.4rem; color: var(--accent); }
+
+        .search-box { padding: 10px 20px; }
+        .search-box input {
+            width: 100%; background: #111; border: 1px solid var(--border);
+            padding: 12px; border-radius: 10px; color: white; outline: none;
+        }
+
+        .tabs { display: flex; padding: 10px 20px; gap: 20px; border-bottom: 1px solid var(--border); }
+        .tab { font-size: 0.8rem; font-weight: 800; color: var(--text-dim); cursor: pointer; padding-bottom: 5px; }
+        .tab.active { color: var(--accent); border-bottom: 2px solid var(--accent); }
+
+        .call-item {
+            display: flex; align-items: center; padding: 15px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .call-pfp { width: 50px; height: 50px; border-radius: 50%; margin-right: 15px; background: #222; }
+        .call-info { flex: 1; }
+        .u-name { font-weight: 700; }
+        .call-meta { font-size: 0.8rem; color: var(--text-dim); }
+        
+        .call-action {
+            width: 40px; height: 40px; border-radius: 50%;
+            background: rgba(0, 210, 255, 0.1); border: none; color: var(--accent);
+        }
+
+        #call-ui {
+            position: fixed; inset: 0; background: #000; z-index: 5000;
+            display: none; flex-direction: column;
+        }
+        video { width: 100%; height: 100%; object-fit: cover; background: #111; }
+        #local-video { 
+            position: absolute; top: 40px; right: 20px; width: 100px; height: 150px; 
+            border-radius: 10px; border: 1px solid var(--accent);
+        }
+        .controls { position: absolute; bottom: 50px; width: 100%; display: flex; justify-content: center; gap: 20px; }
+        .end-btn { background: var(--danger); width: 60px; height: 60px; border-radius: 50%; border: none; color: white; font-size: 1.5rem; }
+
+        nav {
+            position: fixed; bottom: 0; width: 100%; background: #000;
+            display: flex; justify-content: space-around; padding: 15px 0;
+            border-top: 1px solid var(--border);
+        }
+        .nav-icon { font-size: 1.5rem; color: #555; text-decoration: none; }
+        .nav-icon.active { color: var(--accent); }
+    </style>
+</head>
+<body>
+
+<header><div class="header-logo">GOORAC CALLS</div></header>
+
+<div class="search-box">
+    <input type="text" id="user-search" placeholder="Search following..." oninput="filterContacts(this.value)">
+</div>
+
+<div class="tabs">
+    <div class="tab active" id="tab-recent" onclick="switchTab('recent')">Recent</div>
+    <div class="tab" id="tab-contacts" onclick="switchTab('contacts')">Following</div>
+</div>
+
+<div id="content-list"></div>
+
+<div id="call-ui">
+    <video id="remote-video" autoplay playsinline></video>
+    <video id="local-video" autoplay playsinline muted></video>
+    <div class="controls">
+        <button class="end-btn" onclick="endCall()">❌</button>
+    </div>
+</div>
+
+<nav>
+    <a href="home.html" class="nav-icon">🏠</a>
+    <a href="messages.html" class="nav-icon">💬</a>
+    <a href="add-contact.html" class="nav-icon">🔍</a>
+    <a href="calls.html" class="nav-icon active">📞</a>
+</nav>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyCFzAEHC5KLiO2DEkVtoTlFn9zeCQrwImE",
+        authDomain: "goorac-c3b59.firebaseapp.com",
+        projectId: "goorac-c3b59",
+        storageBucket: "goorac-c3b59.firebasestorage.app",
+        messagingSenderId: "746746595332",
+        appId: "1:746746595332:web:d3f8527d27fe8ca2530d51",
+        databaseURL: "https://goorac-c3b59-default-rtdb.firebaseio.com"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const rdb = firebase.database();
+    const auth = firebase.auth();
+
+    let myUid = "";
+    let myFollowingData = []; 
+    let currentTab = 'recent';
+
+    auth.onAuthStateChanged(user => {
+        if (user) {
+            myUid = user.uid;
+            loadCallData();
+            listenForIncomingCalls();
+        } else { window.location.href = 'login.html'; }
+    });
+
+    function switchTab(tab) {
+        currentTab = tab;
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.getElementById(`tab-${tab}`).classList.add('active');
+        loadCallData();
+    }
+
+    async function loadCallData() {
+        const list = document.getElementById('content-list');
+        list.innerHTML = "";
+
+        if (currentTab === 'recent') {
+            // Load History
+            const snap = await db.collection("calls")
+                .where("participants", "array-contains", myUid)
+                .orderBy("timestamp", "desc").limit(15).get();
+            
+            if(snap.empty) { list.innerHTML = "<p style='text-align:center;color:#444;margin-top:20px;'>No call history</p>"; return; }
+            
+            for (let doc of snap.docs) {
+                const call = doc.data();
+                const otherUid = call.participants.find(id => id !== myUid);
+                const u = (await db.collection("users").doc(otherUid).get()).data();
+                renderItem(u, call.timestamp, 'recent');
+            }
+        } else {
+            // Load Following
+            const userDoc = await db.collection("users").doc(myUid).get();
+            const following = userDoc.data()?.following || [];
+            myFollowingData = [];
+
+            for (let uid of following) {
+                const u = (await db.collection("users").doc(uid).get()).data();
+                if(u) {
+                    u.uid = uid;
+                    myFollowingData.push(u);
+                    renderItem(u, null, 'contact');
+                }
+            }
+        }
+    }
+
+    function renderItem(u, time, type) {
+        const list = document.getElementById('content-list');
+        const timeStr = time ? new Date(time.toDate()).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : "@"+u.username;
+        
+        list.innerHTML += `
+            <div class="call-item">
+                <img src="${u.photoURL || 'https://via.placeholder.com/150'}" class="call-pfp">
+                <div class="call-info">
+                    <div class="u-name">${u.name || u.username}</div>
+                    <div class="call-meta">${timeStr}</div>
+                </div>
+                <button class="call-action" onclick="startCall('${u.uid}', '${u.username}')">📞</button>
+            </div>
+        `;
+    }
+
+    function filterContacts(val) {
+        if(currentTab !== 'contacts') switchTab('contacts');
+        const list = document.getElementById('content-list');
+        list.innerHTML = "";
+        myFollowingData.filter(u => u.username.toLowerCase().includes(val.toLowerCase()) || u.name?.toLowerCase().includes(val.toLowerCase()))
+            .forEach(u => renderItem(u, null, 'contact'));
+    }
+
+    // --- CALLING CORE ---
+
+    async function startCall(targetUid, targetUsername) {
+        // 1. Log the call in Firestore Recent
+        await db.collection("calls").add({
+            participants: [myUid, targetUid],
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            type: 'outgoing'
+        });
+
+        document.getElementById('call-ui').style.display = 'flex';
+        
+        // 2. Open Camera
+        const stream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
+        document.getElementById('local-video').srcObject = stream;
+
+        // 3. Notify the other user via Realtime DB
+        rdb.ref(`incoming_calls/${targetUid}`).set({
+            from: myUid,
+            fromName: auth.currentUser.displayName || "Someone",
+            status: 'ringing'
+        });
+    }
+
+    function listenForIncomingCalls() {
+        rdb.ref(`incoming_calls/${myUid}`).on('value', async snap => {
+            const data = snap.val();
+            if(data && data.status === 'ringing') {
+                if(confirm(`Incoming call from ${data.fromName}. Answer?`)) {
+                    document.getElementById('call-ui').style.display = 'flex';
+                    const stream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
+                    document.getElementById('local-video').srcObject = stream;
+                    // Connect logic goes here
+                } else {
+                    rdb.ref(`incoming_calls/${myUid}`).remove();
+                }
+            }
+        });
+    }
+
+    function endCall() {
+        const stream = document.getElementById('local-video').srcObject;
+        if(stream) stream.getTracks().forEach(t => t.stop());
+        document.getElementById('call-ui').style.display = 'none';
+        rdb.ref(`incoming_calls`).child(myUid).remove();
+    }
+</script>
+</body>
+</html>
