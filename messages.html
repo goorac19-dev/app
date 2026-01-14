@@ -15,13 +15,18 @@
             --accent: #00d2ff;
             --border: rgba(255, 255, 255, 0.1);
             --text-dim: #888;
+            --danger: #ff4444;
         }
 
         body {
             background: var(--bg); color: white; margin: 0;
             font-family: -apple-system, system-ui, sans-serif;
             padding-bottom: 90px; overflow-x: hidden;
-            -webkit-user-select: none; user-select: none;
+            -webkit-user-select: none; 
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
         }
 
         header {
@@ -37,9 +42,9 @@
             width: 100%; background: #111; border: 1px solid var(--border);
             padding: 12px 15px; border-radius: 12px; color: white; outline: none; box-sizing: border-box;
             font-size: 16px !important;
+            -webkit-user-select: text; user-select: text;
         }
 
-        /* --- SKELETON LOADING --- */
         .skeleton-item {
             display: flex; align-items: center; padding: 15px 20px; opacity: 0.5;
             animation: quantumPulse 1.5s infinite ease-in-out;
@@ -52,10 +57,11 @@
             display: flex; align-items: center; padding: 15px 20px; 
             cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05);
             transition: background 0.2s;
+            -webkit-touch-callout: none;
         }
         .chat-item:active { background: rgba(255,255,255,0.05); }
 
-        .chat-pfp { width: 55px; height: 55px; border-radius: 50%; margin-right: 15px; object-fit: cover; border: 1px solid var(--border); }
+        .chat-pfp { width: 55px; height: 55px; border-radius: 50%; margin-right: 15px; object-fit: cover; border: 1px solid var(--border); pointer-events: none; }
         .chat-info { flex: 1; min-width: 0; }
         .chat-top-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
         
@@ -65,11 +71,10 @@
         .typing-text { color: var(--accent); font-weight: 600; font-style: italic; }
 
         .follow-btn { 
-            background: var(--accent); color: #000; border: none; 
-            padding: 6px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 800; cursor: pointer;
+            background: transparent; color: var(--accent); border: 1px solid var(--accent); 
+            padding: 5px 10px; border-radius: 15px; font-size: 0.65rem; font-weight: 800; cursor: pointer;
         }
 
-        /* --- QUANTUM UNREAD BADGE --- */
         .unread-badge { 
             background: var(--accent); color: #000; 
             min-width: 20px; height: 20px; border-radius: 10px; 
@@ -77,6 +82,28 @@
             display: flex; align-items: center; justify-content: center;
             padding: 0 6px; box-shadow: 0 0 12px var(--accent);
             flex-shrink: 0;
+        }
+
+        #delete-menu {
+            position: fixed; bottom: -100%; left: 0; width: 100%;
+            background: #111; border-top: 1px solid var(--border);
+            z-index: 3000; border-radius: 20px 20px 0 0;
+            transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            padding: 20px; box-sizing: border-box;
+        }
+        #delete-menu.active { bottom: 0; }
+        .menu-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+            z-index: 2999; display: none; backdrop-filter: blur(4px);
+        }
+        .del-btn-big {
+            width: 100%; background: var(--danger); color: white; border: none;
+            padding: 16px; border-radius: 14px; font-weight: 800; font-size: 1rem;
+            margin-bottom: 10px; cursor: pointer;
+        }
+        .cancel-btn {
+            width: 100%; background: #222; color: white; border: none;
+            padding: 16px; border-radius: 14px; font-weight: 600; cursor: pointer;
         }
 
         nav {
@@ -91,12 +118,12 @@
         #search-results { display: none; background: #000; min-height: 100vh; }
     </style>
 </head>
-<body>
+<body oncontextmenu="return false;">
 
 <header><div class="header-logo">GOORAC</div></header>
 
 <div class="search-wrap">
-    <input type="text" class="search-input" id="main-search" placeholder="Search people..." oninput="searchUsers(this.value)" autocomplete="off">
+    <input type="text" class="search-input" id="main-search" placeholder="Search followers or following..." oninput="searchUsers(this.value)" autocomplete="off">
 </div>
 
 <div id="search-results"></div>
@@ -108,6 +135,13 @@
         <div class="skeleton-item"><div class="skeleton-circle"></div><div style="flex:1"><div class="skeleton-line" style="width:40%"></div><div class="skeleton-line" style="width:70%"></div></div></div>
         <div class="skeleton-item"><div class="skeleton-circle"></div><div style="flex:1"><div class="skeleton-line" style="width:30%"></div><div class="skeleton-line" style="width:60%"></div></div></div>
     </div>
+</div>
+
+<div class="menu-overlay" id="overlay" onclick="closeDeleteMenu()"></div>
+<div id="delete-menu">
+    <div style="text-align: center; margin-bottom: 15px; color: #666; font-size: 0.8rem; font-weight: 600;">CHAT OPTIONS</div>
+    <button class="del-btn-big" id="confirm-delete">Delete For Both</button>
+    <button class="cancel-btn" onclick="closeDeleteMenu()">Cancel</button>
 </div>
 
 <nav>
@@ -136,6 +170,11 @@
 
     let myUid = "";
     let myFollowingList = [];
+    let myFollowersList = [];
+    let longPressTimer;
+    let activeChatId = null;
+
+    document.addEventListener('contextmenu', event => event.preventDefault());
 
     auth.onAuthStateChanged(user => {
         if (user) {
@@ -147,14 +186,15 @@
 
     async function fetchUserData() {
         const userDoc = await db.collection("users").doc(myUid).get();
-        myFollowingList = userDoc.data()?.following || [];
+        const data = userDoc.data();
+        myFollowingList = data?.following || [];
+        myFollowersList = data?.followers || [];
     }
 
     function listenToInbox() {
         db.collection("chats").where("participants", "array-contains", myUid)
         .onSnapshot(async snap => {
             const list = document.getElementById('chats-list');
-            
             const chatPromises = snap.docs.map(async d => {
                 const chat = d.data();
                 const otherUid = chat.participants.find(id => id !== myUid);
@@ -168,23 +208,22 @@
             list.innerHTML = "";
             results.forEach(({id, chat, u, otherUid}) => {
                 if(!u) return;
-
                 const isUnread = (chat.lastSender !== myUid && chat.seen === false);
-                
-                // Logic to get unread count:
                 let displayCount = "";
                 if (chat.unreadCount && chat.unreadCount[myUid]) {
                     const num = chat.unreadCount[myUid];
                     displayCount = num > 99 ? "99+" : num;
                 }
-
                 const amIFollowing = myFollowingList.includes(otherUid);
                 const finalDisplayName = u.name || u.displayName || u.username || "Unknown User";
                 const lastMsgSnippet = chat.lastMessage ? chat.lastMessage : `<span style="font-style:italic; opacity:0.6;">Message unsent</span>`;
-
                 const item = document.createElement('div');
                 item.className = 'chat-item';
-                item.onclick = () => location.href=`chat.html?user=${u.username}`;
+                const handleStart = () => { longPressTimer = setTimeout(() => openDeleteMenu(id), 600); };
+                const handleEnd = () => { clearTimeout(longPressTimer); };
+                item.ontouchstart = handleStart; item.ontouchend = handleEnd;
+                item.onmousedown = handleStart; item.onmouseup = handleEnd;
+                item.onclick = (e) => { if(activeChatId) return; location.href=`chat.html?user=${u.username}`; };
                 
                 item.innerHTML = `
                     <img src="${u.photoURL || 'https://via.placeholder.com/150'}" class="chat-pfp">
@@ -201,35 +240,67 @@
                                 ${lastMsgSnippet}
                             </div>
                             <div style="display:flex; align-items:center; gap:10px;" id="meta-${id}">
-                                ${!amIFollowing ? `<button class="follow-btn" onclick="followUser(event, '${otherUid}')">Follow</button>` : ''}
+                                ${!amIFollowing ? `<button class="follow-btn" onclick="visitProfile(event, '${u.username}')">Visit Profile</button>` : ''}
                                 ${isUnread ? `<div class="unread-badge">${displayCount}</div>` : ''}
                             </div>
                         </div>
                     </div>
                 `;
                 list.appendChild(item);
-
                 rdb.ref(`typing/${id}/${otherUid}`).on('value', s => {
                     const msgEl = document.getElementById(`last-msg-${id}`);
                     if(!msgEl) return;
-                    if(s.val() === true) {
-                        msgEl.innerHTML = `<span class="typing-text">typing...</span>`;
-                    } else {
-                        msgEl.innerHTML = lastMsgSnippet;
-                    }
+                    if(s.val() === true) { msgEl.innerHTML = `<span class="typing-text">typing...</span>`; } 
+                    else { msgEl.innerHTML = lastMsgSnippet; }
                 });
             });
-
             if(results.length === 0) list.innerHTML = "<p style='text-align:center; padding:50px; color:#444;'>No transmissions found.</p>";
         });
     }
 
-    async function followUser(e, uid) {
+    function openDeleteMenu(chatId) {
+        activeChatId = chatId;
+        document.getElementById('delete-menu').classList.add('active');
+        document.getElementById('overlay').style.display = 'block';
+        if (window.navigator.vibrate) window.navigator.vibrate(50);
+    }
+
+    function closeDeleteMenu() {
+        activeChatId = null;
+        document.getElementById('delete-menu').classList.remove('active');
+        document.getElementById('overlay').style.display = 'none';
+    }
+
+    document.getElementById('confirm-delete').onclick = async () => {
+        if(!activeChatId) return;
+        const cid = activeChatId; 
+        closeDeleteMenu();
+        
+        try {
+            // FIXED: Explicitly only delete messages and the chat doc
+            // This prevents triggers from accidentally touching user profiles
+            const messagesRef = db.collection("chats").doc(cid).collection("messages");
+            const snapshot = await messagesRef.get();
+            const batch = db.batch();
+            
+            // Delete all messages in the subcollection
+            snapshot.docs.forEach((doc) => batch.delete(doc.ref));
+            
+            // Delete the main chat document
+            batch.delete(db.collection("chats").doc(cid));
+            
+            await batch.commit();
+            
+            // Clean up Realtime Database typing indicator
+            await rdb.ref(`typing/${cid}`).remove();
+        } catch(e) { 
+            console.error("Strict deletion failed:", e); 
+        }
+    };
+
+    function visitProfile(e, username) {
         e.stopPropagation();
-        await db.collection("users").doc(myUid).update({
-            following: firebase.firestore.FieldValue.arrayUnion(uid)
-        });
-        myFollowingList.push(uid);
+        location.href = `userProfile.html?user=${username}`;
     }
 
     function searchUsers(val) {
@@ -237,12 +308,22 @@
         const content = document.getElementById('inbox-content');
         if(val.length < 1) { results.style.display = 'none'; content.style.display = 'block'; return; }
         results.style.display = 'block'; content.style.display = 'none';
-
         const queryText = val.toLowerCase();
-        db.collection("users").where("username", ">=", queryText).where("username", "<=", queryText + '\uf8ff').limit(10).get().then(snap => {
-            results.innerHTML = snap.docs.map(doc => {
+        const myContacts = [...new Set([...myFollowingList, ...myFollowersList])];
+        if (myContacts.length === 0) {
+            results.innerHTML = "<p style='text-align:center; padding:50px; color:#444;'>No contacts found.</p>";
+            return;
+        }
+        db.collection("users").where(firebase.firestore.FieldPath.documentId(), 'in', myContacts.slice(0, 10)).get().then(snap => {
+            results.innerHTML = snap.docs
+            .filter(doc => {
                 const u = doc.data();
-                if(doc.id === myUid) return '';
+                const name = (u.name || u.displayName || u.username || "").toLowerCase();
+                const username = (u.username || "").toLowerCase();
+                return name.includes(queryText) || username.includes(queryText);
+            })
+            .map(doc => {
+                const u = doc.data();
                 const searchName = u.name || u.displayName || u.username;
                 return `
                     <div class="chat-item" onclick="location.href='chat.html?user=${u.username}'">
@@ -253,6 +334,9 @@
                         </div>
                     </div>`;
             }).join('');
+            if(results.innerHTML === "") {
+                results.innerHTML = "<p style='text-align:center; padding:50px; color:#444;'>No matching followers/following.</p>";
+            }
         });
     }
 

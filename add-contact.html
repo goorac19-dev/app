@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Goorac | Search</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
@@ -23,9 +23,15 @@
             font-family: 'Inter', sans-serif;
             margin: 0;
             padding-bottom: 100px;
+            /* NO COPY NO ZOOM */
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            touch-action: manipulation;
+            -webkit-touch-callout: none;
         }
 
-        /* Consistent Header */
         header {
             position: sticky;
             top: 0;
@@ -42,7 +48,6 @@
 
         .search-container { padding: 25px 20px; text-align: center; }
         
-        /* Premium Search Input */
         .search-wrapper {
             position: relative;
             margin-bottom: 30px;
@@ -59,6 +64,8 @@
             outline: none;
             box-sizing: border-box;
             transition: 0.3s;
+            -webkit-user-select: text;
+            user-select: text;
         }
         .search-input:focus { border-color: var(--accent); background: #111; }
 
@@ -76,7 +83,6 @@
         }
         .search-btn:active { transform: scale(0.97); }
 
-        /* Result Card - Matches Profile Squircle Style */
         #result-area { margin: 10px 20px; display: none; }
         .user-card {
             background: var(--card);
@@ -93,13 +99,26 @@
         .v-tick { width: 18px; height: 18px; }
         .res-id-tag { color: var(--accent); font-size: 0.8rem; font-weight: 700; margin-top: 5px; display: block; margin-bottom: 20px; }
 
-        .follow-btn {
-            width: 100%; padding: 15px; border-radius: 18px; border: none; font-weight: 800; cursor: pointer; transition: 0.3s;
+        /* UPDATED BUTTON GROUP */
+        .action-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
         }
-        .btn-add { background: var(--accent); color: black; }
-        .btn-following { background: #1a1a1a; color: #666; }
 
-        /* UPDATED 4-ITEM NAVIGATION */
+        .action-btn {
+            padding: 15px;
+            border-radius: 18px;
+            border: none;
+            font-weight: 800;
+            cursor: pointer;
+            transition: 0.3s;
+            font-size: 0.85rem;
+        }
+        .btn-view { background: #1a1a1a; color: white; border: 1px solid var(--border); }
+        .btn-msg { background: var(--accent); color: black; }
+
         .bottom-nav {
             position: fixed;
             bottom: 0;
@@ -127,7 +146,7 @@
         .nav-link i { font-size: 1.5rem; font-style: normal; }
     </style>
 </head>
-<body>
+<body oncontextmenu="return false;">
 
 <header>
     <div class="header-title">Find Contacts</div>
@@ -149,7 +168,11 @@
             <img id="res-v" src="https://upload.wikimedia.org/wikipedia/commons/e/e4/Twitter_Verified_Badge.svg" class="v-tick" style="display:none;">
         </div>
         <span class="res-id-tag">ID: <span id="res-num">----------</span></span>
-        <button id="follow-action-btn" class="follow-btn btn-add">Follow</button>
+        
+        <div class="action-group">
+            <button id="view-profile-btn" class="action-btn btn-view">View Profile</button>
+            <button id="message-btn" class="action-btn btn-msg">Message</button>
+        </div>
     </div>
 </div>
 
@@ -169,8 +192,6 @@
 </nav>
 
 <script>
-    // ... [Previous Firebase and Search Logic stays the same] ...
-    // Note: Ensure the Firebase Config here matches your login.html
     const firebaseConfig = {
         apiKey: "AIzaSyCFzAEHC5KLiO2DEkVtoTlFn9zeCQrwImE",
         authDomain: "goorac-c3b59.firebaseapp.com",
@@ -185,7 +206,7 @@
     const db = firebase.firestore();
 
     let currentUserUID = "";
-    let targetUserUID = "";
+    let targetUsername = "";
 
     auth.onAuthStateChanged(user => {
         if(user) currentUserUID = user.uid;
@@ -203,45 +224,23 @@
             document.getElementById('result-area').style.display = "none";
         } else {
             const userData = snapshot.docs[0].data();
-            targetUserUID = snapshot.docs[0].id;
+            targetUsername = userData.username;
 
-            document.getElementById('res-pfp').src = userData.photoURL;
-            document.getElementById('res-name').innerText = userData.name;
+            document.getElementById('res-pfp').src = userData.photoURL || 'https://via.placeholder.com/150';
+            document.getElementById('res-name').innerText = userData.name || userData.username;
             document.getElementById('res-num').innerText = userData.gooracNumber;
             document.getElementById('res-v').style.display = userData.verified ? 'inline' : 'none';
             
-            checkFollowStatus();
             document.getElementById('result-area').style.display = "block";
         }
     };
 
-    async function checkFollowStatus() {
-        const myDoc = await db.collection("users").doc(currentUserUID).get();
-        const myFollowingList = myDoc.data().following || [];
-        const btn = document.getElementById('follow-action-btn');
-        if (myFollowingList.includes(targetUserUID)) {
-            btn.innerText = "Following";
-            btn.className = "follow-btn btn-following";
-        } else {
-            btn.innerText = "Follow";
-            btn.className = "follow-btn btn-add";
-        }
-    }
+    document.getElementById('view-profile-btn').onclick = () => {
+        if(targetUsername) window.location.href = `userProfile.html?user=${targetUsername}`;
+    };
 
-    document.getElementById('follow-action-btn').onclick = async () => {
-        const btn = document.getElementById('follow-action-btn');
-        if (btn.innerText === "Follow") {
-            await db.collection("users").doc(currentUserUID).update({
-                following: firebase.firestore.FieldValue.arrayUnion(targetUserUID),
-                followingCount: firebase.firestore.FieldValue.increment(1)
-            });
-            await db.collection("users").doc(targetUserUID).update({
-                followers: firebase.firestore.FieldValue.arrayUnion(currentUserUID),
-                followerCount: firebase.firestore.FieldValue.increment(1)
-            });
-            btn.innerText = "Following";
-            btn.className = "follow-btn btn-following";
-        }
+    document.getElementById('message-btn').onclick = () => {
+        if(targetUsername) window.location.href = `chat.html?user=${targetUsername}`;
     };
 </script>
 
