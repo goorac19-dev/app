@@ -16,85 +16,65 @@
             --text-dim: #888; --danger: #ff4444; --success: #00ff88;
         }
 
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { 
-            background: var(--bg); color: white; margin: 0; font-family: -apple-system, system-ui, sans-serif; 
-            padding-bottom: 80px; overflow-x: hidden; 
+        body {
+            background: var(--bg); color: white; margin: 0;
+            font-family: -apple-system, system-ui, sans-serif;
+            padding-bottom: 100px; overflow: hidden;
         }
 
-        /* HEADER */
-        header { 
-            position: sticky; top: 0; background: rgba(0,0,0,0.8); padding: 15px 20px; 
-            border-bottom: 1px solid var(--border); backdrop-filter: blur(10px); z-index: 100;
-            display: flex; justify-content: space-between; align-items: center;
-        }
-        .header-logo { font-weight: 900; font-size: 1.4rem; color: var(--accent); letter-spacing: 1px; }
+        header { position: sticky; top: 0; background: rgba(0,0,0,0.8); padding: 15px 20px; border-bottom: 1px solid var(--border); backdrop-filter: blur(10px); z-index: 100; }
+        .header-logo { font-weight: 900; font-size: 1.4rem; color: var(--accent); }
 
-        /* TABS */
-        .tabs { display: flex; padding: 15px 20px 0; gap: 20px; }
-        .tab { font-size: 0.85rem; font-weight: 700; color: var(--text-dim); cursor: pointer; padding-bottom: 10px; transition: 0.3s; }
+        .search-box { padding: 15px; }
+        .search-box input {
+            width: 100%; background: #111; border: 1px solid var(--border);
+            padding: 12px; border-radius: 12px; color: white; outline: none;
+        }
+
+        .tabs { display: flex; padding: 0 20px 10px; gap: 20px; border-bottom: 1px solid var(--border); }
+        .tab { font-size: 0.8rem; font-weight: 800; color: var(--text-dim); cursor: pointer; padding-bottom: 5px; }
         .tab.active { color: var(--accent); border-bottom: 2px solid var(--accent); }
 
-        /* LIST */
-        #list-container { padding: 10px 0; }
-        .call-item { 
-            display: flex; align-items: center; padding: 12px 20px; 
-            border-bottom: 1px solid rgba(255,255,255,0.05); animation: fadeIn 0.4s ease;
-        }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        
-        .call-pfp { width: 52px; height: 52px; border-radius: 50%; margin-right: 15px; border: 1px solid var(--border); object-fit: cover; }
+        .call-item { display: flex; align-items: center; padding: 15px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .call-pfp { width: 50px; height: 50px; border-radius: 50%; margin-right: 15px; object-fit: cover; border: 1px solid var(--border); }
         .call-info { flex: 1; }
-        .u-name { font-weight: 700; font-size: 1rem; margin-bottom: 2px; }
-        .call-meta { font-size: 0.75rem; color: var(--text-dim); display: flex; align-items: center; gap: 5px; }
-        .missed { color: var(--danger) !important; }
-        
-        .btn-call-circle { 
-            width: 42px; height: 42px; border-radius: 50%; border: none; 
-            background: rgba(0, 210, 255, 0.1); color: var(--accent); 
-            display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
-        }
+        .u-name { font-weight: 700; }
+        .call-meta { font-size: 0.75rem; color: var(--text-dim); }
+        .btn-call { width: 40px; height: 40px; border-radius: 50%; border: none; background: rgba(0, 210, 255, 0.1); color: var(--accent); cursor: pointer; }
 
-        /* CALL SCREEN OVERLAY */
+        /* Fullscreen Call UI */
         #call-screen {
             position: fixed; inset: 0; background: #000; z-index: 9999;
             display: none; flex-direction: column; align-items: center; justify-content: space-between;
             padding: 80px 20px 100px;
         }
-        #remote-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-        #local-video { 
-            position: absolute; top: 50px; right: 20px; width: 110px; height: 160px; 
-            border-radius: 15px; border: 1.5px solid var(--accent); object-fit: cover; z-index: 10; background: #111;
-        }
-        .caller-ui { z-index: 5; text-align: center; }
-        .caller-ui img { width: 130px; height: 130px; border-radius: 50%; border: 3px solid var(--accent); margin-bottom: 20px; }
+        #remote-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #111; }
+        #local-video { position: absolute; top: 40px; right: 20px; width: 100px; height: 150px; border-radius: 12px; border: 1px solid var(--accent); object-fit: cover; z-index: 10; }
+        
+        .caller-details { z-index: 5; text-align: center; }
+        .caller-details img { width: 120px; height: 120px; border-radius: 50%; margin-bottom: 20px; border: 2px solid var(--accent); }
         
         .call-controls { display: flex; gap: 25px; z-index: 20; }
-        .ctrl-btn { width: 68px; height: 68px; border-radius: 50%; border: none; font-size: 1.6rem; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .ctrl-btn { width: 65px; height: 65px; border-radius: 50%; border: none; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; }
         .btn-end { background: var(--danger); }
-        .btn-accept { background: var(--success); box-shadow: 0 0 15px var(--success); }
-        .btn-opt { background: rgba(255,255,255,0.15); backdrop-filter: blur(15px); }
+        .btn-accept { background: var(--success); }
+        .btn-opt { background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); }
 
-        /* NAVIGATION BAR */
-        nav { 
-            position: fixed; bottom: 0; width: 100%; background: #000; 
-            display: flex; justify-content: space-around; padding: 15px 0; 
-            border-top: 1px solid var(--border); z-index: 100;
-        }
-        .nav-icon { font-size: 1.6rem; color: #555; text-decoration: none; transition: 0.3s; }
+        nav { position: fixed; bottom: 0; width: 100%; background: #000; display: flex; justify-content: space-around; padding: 15px 0; border-top: 1px solid var(--border); }
+        .nav-icon { font-size: 1.5rem; color: #444; text-decoration: none; }
         .nav-icon.active { color: var(--accent); }
     </style>
 </head>
 <body>
 
-<header>
-    <div class="header-logo">GOORAC</div>
-    <div style="font-size: 1.2rem;">✨</div>
-</header>
+<header><div class="header-logo">GOORAC</div></header>
+
+<div class="search-box">
+    <input type="text" id="search" placeholder="Search following...">
+</div>
 
 <div class="tabs">
-    <div class="tab active" id="tab-recent" onclick="switchTab('recent')">Recent</div>
-    <div class="tab" id="tab-contacts" onclick="switchTab('contacts')">Following</div>
+    <div class="tab active" onclick="loadData()">Following</div>
 </div>
 
 <div id="list-container"></div>
@@ -103,10 +83,10 @@
     <video id="remote-video" autoplay playsinline></video>
     <video id="local-video" autoplay playsinline muted></video>
 
-    <div class="caller-ui" id="caller-id-card">
-        <img src="" id="ui-target-pfp">
-        <h2 id="ui-target-name">User</h2>
-        <p id="ui-call-status" style="color: var(--accent); letter-spacing: 2px; font-weight: bold;">RINGING...</p>
+    <div class="caller-details" id="id-card">
+        <img src="" id="target-pfp">
+        <h2 id="target-name">User</h2>
+        <p id="call-status" style="color: var(--accent); letter-spacing: 2px;">RINGING...</p>
     </div>
 
     <div class="call-controls">
@@ -120,11 +100,12 @@
 <nav>
     <a href="home.html" class="nav-icon">🏠</a>
     <a href="messages.html" class="nav-icon">💬</a>
-    <a href="search.html" class="nav-icon">🔍</a>
+    <a href="add-contact.html" class="nav-icon">🔍</a>
     <a href="calls.html" class="nav-icon active">📞</a>
 </nav>
 
 <script>
+    // --- FIREBASE CONFIG ---
     const firebaseConfig = {
         apiKey: "AIzaSyCFzAEHC5KLiO2DEkVtoTlFn9zeCQrwImE",
         authDomain: "goorac-c3b59.firebaseapp.com",
@@ -135,163 +116,169 @@
         databaseURL: "https://goorac-c3b59-default-rtdb.firebaseio.com"
     };
     firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore(), rdb = firebase.database(), auth = firebase.auth();
+    const db = firebase.firestore();
+    const rdb = firebase.database();
+    const auth = firebase.auth();
 
-    let myUid, myData, currentTab = 'recent', pc, localStream, currentCallId = null, remoteUid = null;
+    let myUid, myData, pc, localStream;
+    let currentCallId = null;
     const servers = { iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }] };
 
+    // --- AUTH & LISTENER INIT ---
     auth.onAuthStateChanged(async user => {
         if (user) {
             myUid = user.uid;
             const doc = await db.collection("users").doc(myUid).get();
-            myData = doc.data();
-            loadCallData();
-            listenForInbound();
+            myData = doc.data() || {};
+            loadData();
+            listenForPings();
         } else { window.location.href = 'login.html'; }
     });
 
-    function switchTab(t) {
-        currentTab = t;
-        document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
-        document.getElementById(`tab-${t}`).classList.add('active');
-        loadCallData();
-    }
-
-    async function loadCallData() {
-        const list = document.getElementById('list-container');
-        list.innerHTML = "";
-        
-        if (currentTab === 'recent') {
-            const snap = await db.collection("calls").where("participants", "array-contains", myUid).orderBy("timestamp", "desc").limit(15).get();
-            if(snap.empty) list.innerHTML = `<div style="text-align:center; padding:50px; color:#444;">No recent calls</div>`;
-            snap.forEach(async d => {
-                const call = d.data();
-                const otherUid = call.participants.find(id => id !== myUid);
-                const userDoc = await db.collection("users").doc(otherUid).get();
-                renderItem(userDoc.data(), call.timestamp, call.status, otherUid);
-            });
-        } else {
-            (myData.following || []).forEach(async uid => {
-                const userDoc = await db.collection("users").doc(uid).get();
-                renderItem(userDoc.data(), null, 'following', uid);
-            });
-        }
-    }
-
-    function renderItem(u, time, status, uid) {
-        if(!u) return;
-        const timeStr = time ? new Date(time.toDate()).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : "@"+u.username;
-        const isMissed = status === 'missed' && status !== 'following';
-        
-        document.getElementById('list-container').innerHTML += `
-            <div class="call-item">
-                <img src="${u.photoURL || 'https://via.placeholder.com/150'}" class="call-pfp">
-                <div class="call-info">
-                    <div class="u-name">${u.name || u.username}</div>
-                    <div class="call-meta ${isMissed ? 'missed' : ''}">${isMissed ? '↙ Missed' : timeStr}</div>
-                </div>
-                <button class="btn-call-circle" onclick="startCall('${uid}', '${u.name}', '${u.photoURL}')">📞</button>
-            </div>`;
-    }
-
-    // --- QUANTUM WEBRTC ENGINE ---
-
+    // --- COLLISION-PROOF CALLER LOGIC ---
     async function startCall(targetUid, name, pfp) {
-        remoteUid = targetUid;
-        showCallUI(name, pfp, "RINGING...");
+        // Handle Collision: If both call, the alphabetically 'smaller' UID waits to see if a ping arrives
+        if (myUid < targetUid) {
+            console.log("Collision Priority: Waiting to see if other user calls first...");
+            await new Promise(r => setTimeout(r, 600));
+            if (currentCallId) return; // Exit if an incoming call ping already arrived
+        }
+
+        console.log("Creating Call...");
+        currentCallId = "call_" + [myUid, targetUid].sort().join("_");
         
+        showCallUI(name, pfp, "RINGING...");
+
         localStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
         document.getElementById('local-video').srcObject = localStream;
 
         pc = new RTCPeerConnection(servers);
         localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
 
-        pc.ontrack = e => {
-            document.getElementById('remote-video').srcObject = e.streams[0];
-            document.getElementById('caller-id-card').style.display = 'none';
+        pc.onicecandidate = e => {
+            if(e.candidate) rdb.ref(`calls/${currentCallId}/candidates/${myUid}`).push(e.candidate.toJSON());
         };
 
-        const callDoc = db.collection('calls').doc();
-        currentCallId = callDoc.id;
-
-        pc.onicecandidate = e => e.candidate && rdb.ref(`iceCandidates/${currentCallId}/${myUid}`).push(e.candidate.toJSON());
+        pc.ontrack = e => {
+            document.getElementById('remote-video').srcObject = e.streams[0];
+            document.getElementById('id-card').style.display = 'none';
+        };
 
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
-        await callDoc.set({ offer, participants: [myUid, targetUid], status: 'ringing', timestamp: firebase.firestore.FieldValue.serverTimestamp() });
 
-        callDoc.onSnapshot(snap => {
-            const data = snap.data();
-            if (data?.answer && !pc.currentRemoteDescription) pc.setRemoteDescription(new RTCSessionDescription(data.answer));
-            if (data?.status === 'ended') closeUI();
+        // Store Offer in RDB
+        await rdb.ref(`calls/${currentCallId}`).update({
+            offer: { sdp: offer.sdp, type: offer.type },
+            caller: myUid,
+            receiver: targetUid,
+            status: 'ringing'
         });
 
-        rdb.ref(`iceCandidates/${currentCallId}/${targetUid}`).on('child_added', s => pc.addIceCandidate(new RTCIceCandidate(s.val())));
-        
-        // Signal the recipient via Realtime DB (Fast)
-        rdb.ref(`signaling/${targetUid}`).set({ from: myUid, callId: currentCallId, name: myData.name, pfp: myData.photoURL, ts: Date.now() });
+        // Ping Receiver
+        rdb.ref(`signaling/${targetUid}`).set({
+            from: myUid,
+            callId: currentCallId,
+            name: myData.name || "User",
+            pfp: myData.photoURL || ""
+        });
+
+        // Watch for Answer
+        rdb.ref(`calls/${currentCallId}/answer`).on('value', snap => {
+            const ans = snap.val();
+            if(ans && !pc.currentRemoteDescription) {
+                pc.setRemoteDescription(new RTCSessionDescription(ans));
+            }
+        });
+
+        // Watch for Candidates
+        rdb.ref(`calls/${currentCallId}/candidates/${targetUid}`).on('child_added', snap => {
+            pc.addIceCandidate(new RTCIceCandidate(snap.val()));
+        });
     }
 
-    function listenForInbound() {
-        rdb.ref(`signaling/${myUid}`).on('value', async snap => {
+    // --- RECEIVER LOGIC (THE POPUP) ---
+    function listenForPings() {
+        rdb.ref(`signaling/${myUid}`).on('value', snap => {
             const data = snap.val();
-            if (data && !currentCallId) {
+            if(data && !currentCallId) {
                 currentCallId = data.callId;
-                remoteUid = data.from;
-                showCallUI(data.name, data.pfp, "INCOMING QUANTUM CALL...");
+                showCallUI(data.name, data.pfp, "INCOMING CALL...");
                 document.getElementById('answer-btn').style.display = 'flex';
-                db.collection('calls').doc(currentCallId).onSnapshot(s => { if(s.data()?.status === 'ended') closeUI(); });
             }
         });
     }
 
     async function answerCall() {
         document.getElementById('answer-btn').style.display = 'none';
-        document.getElementById('ui-call-status').innerText = "CONNECTING...";
-        
+        document.getElementById('call-status').innerText = "CONNECTING...";
+
         localStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
         document.getElementById('local-video').srcObject = localStream;
 
         pc = new RTCPeerConnection(servers);
         localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
-        pc.ontrack = e => {
-            document.getElementById('remote-video').srcObject = e.streams[0];
-            document.getElementById('caller-id-card').style.display = 'none';
+
+        pc.onicecandidate = e => {
+            if(e.candidate) rdb.ref(`calls/${currentCallId}/candidates/${myUid}`).push(e.candidate.toJSON());
         };
 
-        const callDoc = db.collection('calls').doc(currentCallId);
-        const callData = (await callDoc.get()).data();
+        pc.ontrack = e => {
+            document.getElementById('remote-video').srcObject = e.streams[0];
+            document.getElementById('id-card').style.display = 'none';
+        };
 
-        pc.onicecandidate = e => e.candidate && rdb.ref(`iceCandidates/${currentCallId}/${myUid}`).push(e.candidate.toJSON());
-        rdb.ref(`iceCandidates/${currentCallId}/${remoteUid}`).on('child_added', s => pc.addIceCandidate(new RTCIceCandidate(s.val())));
-
+        const snap = await rdb.ref(`calls/${currentCallId}`).get();
+        const callData = snap.val();
+        
         await pc.setRemoteDescription(new RTCSessionDescription(callData.offer));
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
-        await callDoc.update({ answer, status: 'connected' });
-    }
 
-    function hangUp() {
-        if(currentCallId) db.collection('calls').doc(currentCallId).update({ status: 'ended' });
+        await rdb.ref(`calls/${currentCallId}/answer`).set({ sdp: answer.sdp, type: answer.type });
+        await rdb.ref(`calls/${currentCallId}/status`).set('connected');
+
+        rdb.ref(`calls/${currentCallId}/candidates/${callData.caller}`).on('child_added', snap => {
+            pc.addIceCandidate(new RTCIceCandidate(snap.val()));
+        });
+
         rdb.ref(`signaling/${myUid}`).remove();
-        if(remoteUid) rdb.ref(`signaling/${remoteUid}`).remove();
-        closeUI();
     }
 
-    function closeUI() {
-        if(localStream) localStream.getTracks().forEach(t => t.stop());
-        if(pc) pc.close();
-        pc = null; currentCallId = null; remoteUid = null;
-        document.getElementById('call-screen').style.display = 'none';
-        document.getElementById('caller-id-card').style.display = 'block';
-        document.getElementById('remote-video').srcObject = null;
+    // --- UI HELPERS ---
+    async function loadData() {
+        const list = document.getElementById('list-container');
+        list.innerHTML = "";
+        const following = myData.following || [];
+        for (const uid of following) {
+            const uDoc = await db.collection("users").doc(uid).get();
+            const u = uDoc.data();
+            if(!u) continue;
+            list.innerHTML += `
+                <div class="call-item">
+                    <img src="${u.photoURL || 'https://via.placeholder.com/150'}" class="call-pfp">
+                    <div class="call-info">
+                        <div class="u-name">${u.name || u.username}</div>
+                        <div class="call-meta">@${u.username}</div>
+                    </div>
+                    <button class="btn-call" onclick="startCall('${uid}', '${u.name || u.username}', '${u.photoURL}')">📞</button>
+                </div>`;
+        }
     }
 
     function showCallUI(name, pfp, status) {
         document.getElementById('call-screen').style.display = 'flex';
-        document.getElementById('ui-target-name').innerText = name;
-        document.getElementById('ui-target-pfp').src = pfp || 'https://via.placeholder.com/150';
-        document.getElementById('ui-call-status').innerText = status;
+        document.getElementById('target-name').innerText = name;
+        document.getElementById('target-pfp').src = pfp || 'https://via.placeholder.com/150';
+        document.getElementById('call-status').innerText = status;
+    }
+
+    function hangUp() {
+        if(localStream) localStream.getTracks().forEach(t => t.stop());
+        if(pc) pc.close();
+        rdb.ref(`signaling/${myUid}`).remove();
+        if(currentCallId) rdb.ref(`calls/${currentCallId}`).remove();
+        window.location.reload(); 
     }
 
     function toggleMic() {
