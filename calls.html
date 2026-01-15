@@ -131,7 +131,7 @@
         .ctrl-btn { width: 55px; height: 55px; border-radius: 50%; border: none; font-size: 1.4rem; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; transition: 0.2s; background: rgba(255,255,255,0.15); }
         .btn-end { width: 65px; height: 65px; background: var(--danger) !important; }
         .btn-accept { width: 65px; height: 65px; background: var(--success) !important; }
-        .btn-off { background: rgba(255,255,255,0.5); color: black; }
+        .btn-off { background: rgba(255,255,255,0.5) !important; color: black; }
 
         nav { 
             position: fixed; bottom: 0; width: 100%; background: #000; 
@@ -222,7 +222,7 @@
     let secondsElapsed = 0;
     let currentActiveTarget = null; 
     let activeTab = 'recent';
-    let isCamOn = false;
+    let isCamOn = true; 
     let cachedList = []; 
     let callEndedByRemote = false;
 
@@ -233,7 +233,6 @@
             myUid = user.uid;
             const doc = await db.collection("users").doc(myUid).get();
             myData = doc.data() || {};
-            // We removed the .remove() line so it doesn't clear the call signal if it exists on load
             loadData();
             listenForPings();
         } else { window.location.href = 'login.html'; }
@@ -383,7 +382,10 @@
         try {
             localStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
             document.getElementById('local-video').srcObject = localStream;
-            localStream.getVideoTracks()[0].enabled = false;
+            
+            isCamOn = true;
+            updateCamUI(); 
+
             setupPeerConnection(targetUid);
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
@@ -412,17 +414,16 @@
                     startTimer();
                     updateCallStatus("CONNECTED", "#1ebea5");
                     document.getElementById('ring-animation').style.display = 'none';
+                    document.getElementById('remote-video').style.display = 'block';
                 }
             });
         } catch (e) { alert("Enable camera/mic to call"); hangUp(); }
     }
 
     function listenForPings() {
-        // Changed to 'value' listener to catch existing calls on page load
         rdb.ref(`signaling/${myUid}`).on('value', snap => {
             const data = snap.val();
             if(data && !currentCallId) {
-                // Check if call is fresh (within last 45 seconds) to avoid ghosts
                 const now = Date.now();
                 if (now - data.timestamp > 45000) {
                     rdb.ref(`signaling/${myUid}`).remove();
@@ -456,30 +457,58 @@
         document.getElementById('answer-btn').style.display = 'none';
         document.getElementById('hangup-btn').style.transform = 'none';
         updateCallStatus("CONNECTING...", "var(--accent)");
+        
         const snap = await rdb.ref(`calls/${currentCallId}`).get();
         const callData = snap.val();
+        
         try {
             localStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
             document.getElementById('local-video').srcObject = localStream;
-            localStream.getVideoTracks()[0].enabled = false;
+            
+            isCamOn = true;
+            updateCamUI();
+
             setupPeerConnection(callData.caller);
             await pc.setRemoteDescription(new RTCSessionDescription(callData.offer));
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
-            await rdb.ref(`calls/${currentCallId}`).update({ answer: { sdp: answer.sdp, type: answer.type }, status: 'connected' });
+            
+            await rdb.ref(`calls/${currentCallId}`).update({ 
+                answer: { sdp: answer.sdp, type: answer.type }, 
+                status: 'connected' 
+            });
+            
             rdb.ref(`signaling/${myUid}`).remove();
             startTimer();
             updateCallStatus("CONNECTED", "#1ebea5");
             document.getElementById('ring-animation').style.display = 'none';
+            document.getElementById('remote-video').style.display = 'block';
         } catch (e) { hangUp(); }
     }
 
     function setupPeerConnection(targetUid) {
         pc = new RTCPeerConnection(servers);
-        localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
-        pc.onicecandidate = e => { if(e.candidate) rdb.ref(`calls/${currentCallId}/candidates/${myUid}`).push(e.candidate.toJSON()); };
-        pc.ontrack = e => { document.getElementById('remote-video').srcObject = e.streams[0]; };
-        rdb.ref(`calls/${currentCallId}/candidates/${targetUid}`).on('child_added', snap => { pc.addIceCandidate(new RTCIceCandidate(snap.val())).catch(() => {}); });
+        
+        if (localStream) {
+            localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+        }
+        
+        pc.onicecandidate = e => { 
+            if(e.candidate) rdb.ref(`calls/${currentCallId}/candidates/${myUid}`).push(e.candidate.toJSON()); 
+        };
+        
+        pc.ontrack = e => { 
+            const remoteVid = document.getElementById('remote-video');
+            if (remoteVid.srcObject !== e.streams[0]) {
+                remoteVid.srcObject = e.streams[0];
+            }
+        };
+
+        // FIXED: Both sides must listen for candidates from the OTHER side
+        rdb.ref(`calls/${currentCallId}/candidates/${targetUid}`).on('child_added', snap => { 
+            const candidate = new RTCIceCandidate(snap.val());
+            pc.addIceCandidate(candidate).catch(err => console.error("ICE error", err)); 
+        });
     }
 
     function startTimer() {
@@ -540,7 +569,12 @@
 
         clearInterval(timerInterval);
         if(localStream) localStream.getTracks().forEach(t => t.stop());
-        if(pc) pc.close();
+        if(pc) {
+            pc.ontrack = null;
+            pc.onicecandidate = null;
+            pc.close();
+            pc = null;
+        }
         rdb.ref(`signaling/${myUid}`).remove();
         setTimeout(() => window.location.reload(), 300);
     }
@@ -556,19 +590,27 @@
     function toggleMic() {
         if(!localStream) return;
         const t = localStream.getAudioTracks()[0];
-        t.enabled = !t.enabled;
-        document.getElementById('mic-btn').classList.toggle('btn-off', !t.enabled);
+        if (t) {
+            t.enabled = !t.enabled;
+            document.getElementById('mic-btn').classList.toggle('btn-off', !t.enabled);
+        }
+    }
+
+    function updateCamUI() {
+        document.getElementById('cam-btn').classList.toggle('btn-off', !isCamOn);
+        document.getElementById('remote-video').style.display = isCamOn ? 'block' : 'none';
+        document.getElementById('local-video').style.display = isCamOn ? 'block' : 'none';
+        document.getElementById('pfp-area').style.display = isCamOn ? 'none' : 'flex';
     }
 
     function toggleCam() {
         if(!localStream) return;
         isCamOn = !isCamOn;
         const t = localStream.getVideoTracks()[0];
-        t.enabled = isCamOn;
-        document.getElementById('cam-btn').classList.toggle('btn-off', !isCamOn);
-        document.getElementById('remote-video').style.display = isCamOn ? 'block' : 'none';
-        document.getElementById('local-video').style.display = isCamOn ? 'block' : 'none';
-        document.getElementById('pfp-area').style.display = isCamOn ? 'none' : 'flex';
+        if (t) {
+            t.enabled = isCamOn;
+        }
+        updateCamUI();
     }
 </script>
 </body>
