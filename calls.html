@@ -42,7 +42,6 @@
         .call-meta { font-size: 0.75rem; color: var(--text-dim); }
         .btn-call { width: 40px; height: 40px; border-radius: 50%; border: none; background: rgba(0, 210, 255, 0.1); color: var(--accent); cursor: pointer; }
 
-        /* Fullscreen Call UI */
         #call-screen {
             position: fixed; inset: 0; background: #000; z-index: 9999;
             display: none; flex-direction: column; align-items: center; justify-content: space-between;
@@ -91,7 +90,7 @@
 
     <div class="call-controls">
         <button class="ctrl-btn btn-opt" id="mic-btn" onclick="toggleMic()">🎙️</button>
-        <button class="ctrl-btn btn-end" onclick="hangUp()">❌</button>
+        <button class="ctrl-btn btn-end" id="hangup-btn" onclick="hangUp()">❌</button>
         <button class="ctrl-btn btn-accept" id="answer-btn" style="display:none;" onclick="answerCall()">✅</button>
         <button class="ctrl-btn btn-opt" id="cam-btn" onclick="toggleCam()">📷</button>
     </div>
@@ -105,7 +104,6 @@
 </nav>
 
 <script>
-    // --- FIREBASE CONFIG ---
     const firebaseConfig = {
         apiKey: "AIzaSyCFzAEHC5KLiO2DEkVtoTlFn9zeCQrwImE",
         authDomain: "goorac-c3b59.firebaseapp.com",
@@ -122,9 +120,11 @@
 
     let myUid, myData, pc, localStream;
     let currentCallId = null;
+    let isCaller = false;
+
+    // Using Google's public STUN servers
     const servers = { iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }] };
 
-    // --- AUTH & LISTENER INIT ---
     auth.onAuthStateChanged(async user => {
         if (user) {
             myUid = user.uid;
@@ -135,47 +135,26 @@
         } else { window.location.href = 'login.html'; }
     });
 
-    // --- COLLISION-PROOF CALLER LOGIC ---
     async function startCall(targetUid, name, pfp) {
-        // Handle Collision: If both call, the alphabetically 'smaller' UID waits to see if a ping arrives
-        if (myUid < targetUid) {
-            console.log("Collision Priority: Waiting to see if other user calls first...");
-            await new Promise(r => setTimeout(r, 600));
-            if (currentCallId) return; // Exit if an incoming call ping already arrived
-        }
-
-        console.log("Creating Call...");
+        isCaller = true;
         currentCallId = "call_" + [myUid, targetUid].sort().join("_");
-        
         showCallUI(name, pfp, "RINGING...");
 
         localStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
         document.getElementById('local-video').srcObject = localStream;
 
-        pc = new RTCPeerConnection(servers);
-        localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
-
-        pc.onicecandidate = e => {
-            if(e.candidate) rdb.ref(`calls/${currentCallId}/candidates/${myUid}`).push(e.candidate.toJSON());
-        };
-
-        pc.ontrack = e => {
-            document.getElementById('remote-video').srcObject = e.streams[0];
-            document.getElementById('id-card').style.display = 'none';
-        };
+        setupPeerConnection(targetUid);
 
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
 
-        // Store Offer in RDB
-        await rdb.ref(`calls/${currentCallId}`).update({
+        await rdb.ref(`calls/${currentCallId}`).set({
             offer: { sdp: offer.sdp, type: offer.type },
             caller: myUid,
             receiver: targetUid,
             status: 'ringing'
         });
 
-        // Ping Receiver
         rdb.ref(`signaling/${targetUid}`).set({
             from: myUid,
             callId: currentCallId,
@@ -183,28 +162,35 @@
             pfp: myData.photoURL || ""
         });
 
-        // Watch for Answer
-        rdb.ref(`calls/${currentCallId}/answer`).on('value', snap => {
-            const ans = snap.val();
-            if(ans && !pc.currentRemoteDescription) {
-                pc.setRemoteDescription(new RTCSessionDescription(ans));
+        // Listen for Answer or Decline
+        rdb.ref(`calls/${currentCallId}`).on('value', snap => {
+            const data = snap.val();
+            if (!data) return;
+            
+            if (data.status === 'declined') {
+                alert("User declined the call");
+                hangUp();
             }
-        });
-
-        // Watch for Candidates
-        rdb.ref(`calls/${currentCallId}/candidates/${targetUid}`).on('child_added', snap => {
-            pc.addIceCandidate(new RTCIceCandidate(snap.val()));
+            if (data.answer && !pc.currentRemoteDescription) {
+                pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+                document.getElementById('call-status').innerText = "CONNECTED";
+            }
         });
     }
 
-    // --- RECEIVER LOGIC (THE POPUP) ---
     function listenForPings() {
         rdb.ref(`signaling/${myUid}`).on('value', snap => {
             const data = snap.val();
             if(data && !currentCallId) {
+                isCaller = false;
                 currentCallId = data.callId;
                 showCallUI(data.name, data.pfp, "INCOMING CALL...");
                 document.getElementById('answer-btn').style.display = 'flex';
+                
+                // Watch if caller cancels before we answer
+                rdb.ref(`calls/${currentCallId}/status`).on('value', s => {
+                    if (s.val() === 'cancelled') hangUp();
+                });
             }
         });
     }
@@ -213,14 +199,36 @@
         document.getElementById('answer-btn').style.display = 'none';
         document.getElementById('call-status').innerText = "CONNECTING...";
 
+        const snap = await rdb.ref(`calls/${currentCallId}`).get();
+        const callData = snap.val();
+        if(!callData) return;
+
         localStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
         document.getElementById('local-video').srcObject = localStream;
 
+        setupPeerConnection(callData.caller);
+
+        await pc.setRemoteDescription(new RTCSessionDescription(callData.offer));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+
+        await rdb.ref(`calls/${currentCallId}`).update({ 
+            answer: { sdp: answer.sdp, type: answer.type },
+            status: 'connected' 
+        });
+
+        rdb.ref(`signaling/${myUid}`).remove();
+    }
+
+    function setupPeerConnection(targetUid) {
         pc = new RTCPeerConnection(servers);
+        
         localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
 
         pc.onicecandidate = e => {
-            if(e.candidate) rdb.ref(`calls/${currentCallId}/candidates/${myUid}`).push(e.candidate.toJSON());
+            if(e.candidate) {
+                rdb.ref(`calls/${currentCallId}/candidates/${myUid}`).push(e.candidate.toJSON());
+            }
         };
 
         pc.ontrack = e => {
@@ -228,24 +236,30 @@
             document.getElementById('id-card').style.display = 'none';
         };
 
-        const snap = await rdb.ref(`calls/${currentCallId}`).get();
-        const callData = snap.val();
-        
-        await pc.setRemoteDescription(new RTCSessionDescription(callData.offer));
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-
-        await rdb.ref(`calls/${currentCallId}/answer`).set({ sdp: answer.sdp, type: answer.type });
-        await rdb.ref(`calls/${currentCallId}/status`).set('connected');
-
-        rdb.ref(`calls/${currentCallId}/candidates/${callData.caller}`).on('child_added', snap => {
-            pc.addIceCandidate(new RTCIceCandidate(snap.val()));
+        // Listen for candidates from target
+        rdb.ref(`calls/${currentCallId}/candidates/${targetUid}`).on('child_added', snap => {
+            pc.addIceCandidate(new RTCIceCandidate(snap.val())).catch(console.error);
         });
-
-        rdb.ref(`signaling/${myUid}`).remove();
     }
 
-    // --- UI HELPERS ---
+    function hangUp() {
+        if (currentCallId) {
+            if (isCaller) {
+                rdb.ref(`calls/${currentCallId}/status`).set('cancelled');
+            } else {
+                rdb.ref(`calls/${currentCallId}/status`).set('declined');
+            }
+        }
+        
+        setTimeout(() => {
+            if(localStream) localStream.getTracks().forEach(t => t.stop());
+            if(pc) pc.close();
+            rdb.ref(`signaling/${myUid}`).remove();
+            if(currentCallId) rdb.ref(`calls/${currentCallId}`).remove();
+            window.location.reload();
+        }, 500);
+    }
+
     async function loadData() {
         const list = document.getElementById('list-container');
         list.innerHTML = "";
@@ -271,14 +285,6 @@
         document.getElementById('target-name').innerText = name;
         document.getElementById('target-pfp').src = pfp || 'https://via.placeholder.com/150';
         document.getElementById('call-status').innerText = status;
-    }
-
-    function hangUp() {
-        if(localStream) localStream.getTracks().forEach(t => t.stop());
-        if(pc) pc.close();
-        rdb.ref(`signaling/${myUid}`).remove();
-        if(currentCallId) rdb.ref(`calls/${currentCallId}`).remove();
-        window.location.reload(); 
     }
 
     function toggleMic() {
