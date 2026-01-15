@@ -1,148 +1,148 @@
 <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-        <title>Goorac | Quantum Calls</title>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Goorac | Quantum Calls</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <style>
+        :root {
+            --bg: #0b141a;
+            --accent: #00d2ff; 
+            --border: rgba(255, 255, 255, 0.1);
+            --text-dim: #888; 
+            --danger: #ff4444; 
+            --success: #1ebea5;
+            --ig-blue: #0095f6;
+        }
+
+        /* Anti-Copy CSS */
+        body {
+            background: #000; color: white; margin: 0;
+            font-family: -apple-system, system-ui, sans-serif;
+            height: 100vh; overflow: hidden;
+            display: flex; flex-direction: column;
+            -webkit-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        input {
+            -webkit-user-select: text;
+            user-select: text;
+        }
+
+        header { padding: 15px 20px; border-bottom: 1px solid var(--border); background: #000; }
+        .header-logo { font-weight: 900; font-size: 1.4rem; color: var(--accent); }
+        .search-box { padding: 15px; }
+        .search-box input { width: 100%; background: #111; border: 1px solid var(--border); padding: 12px; border-radius: 12px; color: white; outline: none; box-sizing: border-box; }
+        .tabs { display: flex; padding: 0 20px 10px; gap: 20px; border-bottom: 1px solid var(--border); }
+        .tab { font-size: 0.8rem; font-weight: 800; color: var(--text-dim); cursor: pointer; padding-bottom: 5px; }
+        .tab.active { color: var(--accent); border-bottom: 2px solid var(--accent); }
+
+        #list-container { 
+            flex: 1; 
+            overflow-y: auto; 
+            padding-bottom: 80px; 
+            -webkit-overflow-scrolling: touch; 
+        }
+
+        /* Skeleton Loading Animation */
+        .skeleton {
+            background: linear-gradient(90deg, #111 25%, #222 50%, #111 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+            border-radius: 4px;
+        }
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        .skeleton-item { display: flex; align-items: center; padding: 15px 20px; gap: 15px; }
+        .sk-pfp { width: 50px; height: 50px; border-radius: 50%; }
+        .sk-text { height: 12px; width: 60%; margin-bottom: 8px; }
+        .sk-meta { height: 10px; width: 40%; }
+
+        .call-item { display: flex; align-items: center; padding: 15px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .call-pfp { width: 50px; height: 50px; border-radius: 50%; margin-right: 15px; object-fit: cover; border: 1px solid var(--border); }
+        .call-info { flex: 1; }
+        .u-name { font-weight: 700; display: flex; align-items: center; gap: 4px; }
         
-        <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-        <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-        <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-        <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+        .v-badge { 
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 15px;
+            height: 15px;
+            background-color: var(--ig-blue);
+            -webkit-mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M22.5 12.5c0-1.58.8-3.04 2.12-4.03l-1.1-2.48-2.74.05a4.95 4.95 0 0 1-4.04-2.12L14.24 3l-2.47 1.1-1.1-2.48-2.5.78L7.1 5.14a4.95 4.95 0 0 1-4.04 2.12l-2.74-.05-1.1 2.48 2.12 4.03-2.12 4.03 1.1 2.48 2.74-.05a4.95 4.95 0 0 1 4.04 2.12L9.76 21l2.47-1.1 1.1 2.48 2.5-.78.78-2.73a4.95 4.95 0 0 1 4.04-2.12l2.74.05 1.1-2.48-2.12-4.03Z"/></svg>');
+            mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M22.5 12.5c0-1.58.8-3.04 2.12-4.03l-1.1-2.48-2.74.05a4.95 4.95 0 0 1-4.04-2.12L14.24 3l-2.47 1.1-1.1-2.48-2.5.78L7.1 5.14a4.95 4.95 0 0 1-4.04 2.12l-2.74-.05-1.1 2.48 2.12 4.03-2.12 4.03 1.1 2.48 2.74-.05a4.95 4.95 0 0 1 4.04 2.12L9.76 21l2.47-1.1 1.1 2.48 2.5-.78.78-2.73a4.95 4.95 0 0 1 4.04-2.12l2.74.05 1.1-2.48-2.12-4.03Z"/></svg>');
+            -webkit-mask-size: contain;
+            mask-size: contain;
+            -webkit-mask-repeat: no-repeat;
+            mask-repeat: no-repeat;
+            position: relative;
+            margin-left: 4px;
+            flex-shrink: 0;
+            vertical-align: middle;
+        }
+        .v-badge::before {
+            content: "";
+            width: 3.5px;
+            height: 6.5px;
+            border: solid white;
+            border-width: 0 1.8px 1.8px 0;
+            transform: translateY(-1px) rotate(45deg);
+        }
 
-        <style>
-            :root {
-                --bg: #0b141a;
-                --accent: #00d2ff; 
-                --border: rgba(255, 255, 255, 0.1);
-                --text-dim: #888; 
-                --danger: #ff4444; 
-                --success: #1ebea5;
-                --ig-blue: #0095f6;
-            }
+        .call-meta { font-size: 0.75rem; color: var(--text-dim); }
+        .status-missed { color: var(--danger); font-weight: bold; }
+        .status-incoming { color: var(--success); }
+        .status-outgoing { color: var(--accent); }
+        .time-stamp { font-size: 0.7rem; opacity: 0.6; margin-left: 5px; }
+        .btn-call { width: 40px; height: 40px; border-radius: 50%; border: none; background: rgba(0, 210, 255, 0.1); color: var(--accent); cursor: pointer; }
 
-            /* Anti-Copy CSS */
-            body {
-                background: #000; color: white; margin: 0;
-                font-family: -apple-system, system-ui, sans-serif;
-                height: 100vh; overflow: hidden;
-                display: flex; flex-direction: column;
-                -webkit-user-select: none;
-                -ms-user-select: none;
-                user-select: none;
-                -webkit-touch-callout: none;
-            }
+        #call-screen {
+            position: fixed; inset: 0; 
+            background: linear-gradient(to bottom, #0b141a, #121b22); 
+            z-index: 9999;
+            display: none; flex-direction: column; align-items: center; 
+            justify-content: space-between; padding: 60px 20px 40px;
+        }
+        #remote-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; display: none; }
+        #local-video { position: absolute; top: 40px; right: 20px; width: 90px; height: 130px; border-radius: 12px; border: 1.5px solid rgba(255,255,255,0.3); object-fit: cover; z-index: 10; display: none; background: #000; }
+        .call-header { z-index: 5; text-align: center; }
+        .call-header h2 { font-size: 1.8rem; margin: 0 0 8px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 5px; }
+        #call-status { font-size: 0.9rem; color: #aebac1; text-transform: uppercase; letter-spacing: 1.5px; margin: 0; }
+        #call-timer { font-size: 1rem; color: white; margin-top: 5px; font-weight: 400; display: none; }
+        .call-body { z-index: 5; flex: 1; display: flex; align-items: center; justify-content: center; width: 100%; }
+        .big-pfp-container { position: relative; }
+        #target-pfp { width: 180px; height: 180px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.1); }
+        .pulse { position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--accent); animation: pulse-ring 2s infinite; }
+        @keyframes pulse-ring { 0% { transform: scale(1); opacity: 0.5; } 100% { transform: scale(1.5); opacity: 0; } }
+        .call-controls { display: flex; flex-direction: column; gap: 30px; z-index: 20; width: 100%; align-items: center; }
+        .control-row { display: flex; gap: 25px; align-items: center; justify-content: center; }
+        .ctrl-btn { width: 55px; height: 55px; border-radius: 50%; border: none; font-size: 1.4rem; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; transition: 0.2s; background: rgba(255,255,255,0.15); }
+        .btn-end { width: 65px; height: 65px; background: var(--danger) !important; }
+        .btn-accept { width: 65px; height: 65px; background: var(--success) !important; }
+        .btn-off { background: rgba(255,255,255,0.5); color: black; }
 
-            input {
-                -webkit-user-select: text;
-                user-select: text;
-            }
-
-            header { padding: 15px 20px; border-bottom: 1px solid var(--border); background: #000; }
-            .header-logo { font-weight: 900; font-size: 1.4rem; color: var(--accent); }
-            .search-box { padding: 15px; }
-            .search-box input { width: 100%; background: #111; border: 1px solid var(--border); padding: 12px; border-radius: 12px; color: white; outline: none; box-sizing: border-box; }
-            .tabs { display: flex; padding: 0 20px 10px; gap: 20px; border-bottom: 1px solid var(--border); }
-            .tab { font-size: 0.8rem; font-weight: 800; color: var(--text-dim); cursor: pointer; padding-bottom: 5px; }
-            .tab.active { color: var(--accent); border-bottom: 2px solid var(--accent); }
-
-            #list-container { 
-                flex: 1; 
-                overflow-y: auto; 
-                padding-bottom: 80px; 
-                -webkit-overflow-scrolling: touch; 
-            }
-
-            /* Skeleton Loading Animation */
-            .skeleton {
-                background: linear-gradient(90deg, #111 25%, #222 50%, #111 75%);
-                background-size: 200% 100%;
-                animation: loading 1.5s infinite;
-                border-radius: 4px;
-            }
-            @keyframes loading {
-                0% { background-position: 200% 0; }
-                100% { background-position: -200% 0; }
-            }
-            .skeleton-item { display: flex; align-items: center; padding: 15px 20px; gap: 15px; }
-            .sk-pfp { width: 50px; height: 50px; border-radius: 50%; }
-            .sk-text { height: 12px; width: 60%; margin-bottom: 8px; }
-            .sk-meta { height: 10px; width: 40%; }
-
-            .call-item { display: flex; align-items: center; padding: 15px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); }
-            .call-pfp { width: 50px; height: 50px; border-radius: 50%; margin-right: 15px; object-fit: cover; border: 1px solid var(--border); }
-            .call-info { flex: 1; }
-            .u-name { font-weight: 700; display: flex; align-items: center; gap: 4px; }
-            
-            .v-badge { 
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                width: 15px;
-                height: 15px;
-                background-color: var(--ig-blue);
-                -webkit-mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M22.5 12.5c0-1.58.8-3.04 2.12-4.03l-1.1-2.48-2.74.05a4.95 4.95 0 0 1-4.04-2.12L14.24 3l-2.47 1.1-1.1-2.48-2.5.78L7.1 5.14a4.95 4.95 0 0 1-4.04 2.12l-2.74-.05-1.1 2.48 2.12 4.03-2.12 4.03 1.1 2.48 2.74-.05a4.95 4.95 0 0 1 4.04 2.12L9.76 21l2.47-1.1 1.1 2.48 2.5-.78.78-2.73a4.95 4.95 0 0 1 4.04-2.12l2.74.05 1.1-2.48-2.12-4.03Z"/></svg>');
-                mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M22.5 12.5c0-1.58.8-3.04 2.12-4.03l-1.1-2.48-2.74.05a4.95 4.95 0 0 1-4.04-2.12L14.24 3l-2.47 1.1-1.1-2.48-2.5.78L7.1 5.14a4.95 4.95 0 0 1-4.04 2.12l-2.74-.05-1.1 2.48 2.12 4.03-2.12 4.03 1.1 2.48 2.74-.05a4.95 4.95 0 0 1 4.04 2.12L9.76 21l2.47-1.1 1.1 2.48 2.5-.78.78-2.73a4.95 4.95 0 0 1 4.04-2.12l2.74.05 1.1-2.48-2.12-4.03Z"/></svg>');
-                -webkit-mask-size: contain;
-                mask-size: contain;
-                -webkit-mask-repeat: no-repeat;
-                mask-repeat: no-repeat;
-                position: relative;
-                margin-left: 4px;
-                flex-shrink: 0;
-                vertical-align: middle;
-            }
-            .v-badge::before {
-                content: "";
-                width: 3.5px;
-                height: 6.5px;
-                border: solid white;
-                border-width: 0 1.8px 1.8px 0;
-                transform: translateY(-1px) rotate(45deg);
-            }
-
-            .call-meta { font-size: 0.75rem; color: var(--text-dim); }
-            .status-missed { color: var(--danger); font-weight: bold; }
-            .status-incoming { color: var(--success); }
-            .status-outgoing { color: var(--accent); }
-            .time-stamp { font-size: 0.7rem; opacity: 0.6; margin-left: 5px; }
-            .btn-call { width: 40px; height: 40px; border-radius: 50%; border: none; background: rgba(0, 210, 255, 0.1); color: var(--accent); cursor: pointer; }
-
-            #call-screen {
-                position: fixed; inset: 0; 
-                background: linear-gradient(to bottom, #0b141a, #121b22); 
-                z-index: 9999;
-                display: none; flex-direction: column; align-items: center; 
-                justify-content: space-between; padding: 60px 20px 40px;
-            }
-            #remote-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; display: none; }
-            #local-video { position: absolute; top: 40px; right: 20px; width: 90px; height: 130px; border-radius: 12px; border: 1.5px solid rgba(255,255,255,0.3); object-fit: cover; z-index: 10; display: none; background: #000; }
-            .call-header { z-index: 5; text-align: center; }
-            .call-header h2 { font-size: 1.8rem; margin: 0 0 8px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 5px; }
-            #call-status { font-size: 0.9rem; color: #aebac1; text-transform: uppercase; letter-spacing: 1.5px; margin: 0; }
-            #call-timer { font-size: 1rem; color: white; margin-top: 5px; font-weight: 400; display: none; }
-            .call-body { z-index: 5; flex: 1; display: flex; align-items: center; justify-content: center; width: 100%; }
-            .big-pfp-container { position: relative; }
-            #target-pfp { width: 180px; height: 180px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.1); }
-            .pulse { position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--accent); animation: pulse-ring 2s infinite; }
-            @keyframes pulse-ring { 0% { transform: scale(1); opacity: 0.5; } 100% { transform: scale(1.5); opacity: 0; } }
-            .call-controls { display: flex; flex-direction: column; gap: 30px; z-index: 20; width: 100%; align-items: center; }
-            .control-row { display: flex; gap: 25px; align-items: center; justify-content: center; }
-            .ctrl-btn { width: 55px; height: 55px; border-radius: 50%; border: none; font-size: 1.4rem; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; transition: 0.2s; background: rgba(255,255,255,0.15); }
-            .btn-end { width: 65px; height: 65px; background: var(--danger) !important; }
-            .btn-accept { width: 65px; height: 65px; background: var(--success) !important; }
-            .btn-off { background: rgba(255,255,255,0.5); color: black; }
-
-            nav { 
-                position: fixed; bottom: 0; width: 100%; background: #000; 
-                display: flex; justify-content: space-around; padding: 15px 0; 
-                border-top: 1px solid var(--border); z-index: 100;
-            }
-            .nav-icon { font-size: 1.5rem; color: #444; text-decoration: none; }
-            .nav-icon.active { color: var(--accent); }
-        </style>
-    </head>
-    <body oncontextmenu="return false;">
+        nav { 
+            position: fixed; bottom: 0; width: 100%; background: #000; 
+            display: flex; justify-content: space-around; padding: 15px 0; 
+            border-top: 1px solid var(--border); z-index: 100;
+        }
+        .nav-icon { font-size: 1.5rem; color: #444; text-decoration: none; }
+        .nav-icon.active { color: var(--accent); }
+    </style>
+</head>
+<body oncontextmenu="return false;">
 
     <audio id="ringtone" loop preload="auto"><source src="https://assets.mixkit.co/active_storage/sfx/1359/1359-preview.mp3" type="audio/mpeg"></audio>
     <audio id="dialtone" loop preload="auto"><source src="https://www.soundjay.com/phone/sounds/phone-calling-1.mp3" type="audio/mpeg"></audio>
@@ -224,7 +224,7 @@
         let activeTab = 'recent';
         let isCamOn = false;
         let cachedList = []; 
-        let callEndedByRemote = false;
+        let isLoggingInProgress = false;
 
         const servers = { iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }] };
 
@@ -302,7 +302,7 @@
                 const snapshot = await db.collection("call_logs")
                     .where('participants', 'array-contains', myUid)
                     .orderBy('timestamp', 'desc')
-                    .limit(10)
+                    .limit(15)
                     .get();
                     
                 if (snapshot.empty) {
@@ -370,13 +370,15 @@
             renderFilteredList();
         }
 
-        // --- UPDATED CALLING LOGIC ---
+        // --- CORE CALLING LOGIC ---
 
         async function startCall(targetUid, name, pfp, isVerified) {
+            if (currentCallId) return;
             isCaller = true;
             secondsElapsed = 0;
+            isLoggingInProgress = false;
             currentActiveTarget = { uid: targetUid, name: name, pfp: pfp, verified: isVerified };
-            currentCallId = "call_" + Date.now() + "_" + myUid; // Unique call ID
+            currentCallId = "call_" + Date.now() + "_" + myUid;
             
             showCallUI(name, pfp, "DIALING...", isVerified);
             document.getElementById('dialtone').play().catch(() => {});
@@ -384,12 +386,11 @@
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
                 document.getElementById('local-video').srcObject = localStream;
-                localStream.getVideoTracks()[0].enabled = false; // Camera off by default
+                localStream.getVideoTracks()[0].enabled = false;
 
                 pc = new RTCPeerConnection(servers);
                 localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
 
-                // ICE Candidates
                 pc.onicecandidate = (event) => {
                     if (event.candidate) {
                         rdb.ref(`calls/${currentCallId}/candidates/${myUid}`).push(event.candidate.toJSON());
@@ -405,8 +406,8 @@
 
                 const callPayload = {
                     offer: { sdp: offer.sdp, type: offer.type },
-                    caller: myUid, callerName: myData.name || "User", callerPfp: myData.photoURL || "",
-                    receiver: targetUid, status: 'ringing', timestamp: Date.now()
+                    callerId: myUid, callerName: myData.name || "User", callerPfp: myData.photoURL || "",
+                    receiverId: targetUid, status: 'ringing', timestamp: Date.now()
                 };
 
                 await rdb.ref(`calls/${currentCallId}`).set(callPayload);
@@ -415,13 +416,13 @@
                     pfp: myData.photoURL || "", timestamp: Date.now() 
                 });
 
-                // Listen for Answer and Candidates
                 rdb.ref(`calls/${currentCallId}`).on('value', snap => {
                     const data = snap.val();
                     if (!data) return;
+                    
                     if (data.status === 'declined' || data.status === 'cancelled' || data.status === 'ended') {
-                        callEndedByRemote = true;
-                        hangUp();
+                        // Remote end action - clean up without writing status again
+                        handleHangUpEffectively(false);
                     }
                     if (data.answer && !pc.currentRemoteDescription) {
                         pc.setRemoteDescription(new RTCSessionDescription(data.answer));
@@ -433,21 +434,25 @@
                 });
 
                 rdb.ref(`calls/${currentCallId}/candidates/${targetUid}`).on('child_added', snap => {
-                    pc.addIceCandidate(new RTCIceCandidate(snap.val())).catch(e => console.error(e));
+                    if (pc.remoteDescription) {
+                        pc.addIceCandidate(new RTCIceCandidate(snap.val())).catch(e => console.error(e));
+                    }
                 });
 
-            } catch (e) { alert("Permission Denied"); hangUp(); }
+            } catch (e) { alert("Camera/Mic Permission Denied"); hangUp(); }
         }
 
         function listenForPings() {
             rdb.ref(`signaling/${myUid}`).on('value', snap => {
                 const data = snap.val();
                 if (data && !currentCallId) {
-                    if (Date.now() - data.timestamp > 30000) { // Expiry
+                    if (Date.now() - data.timestamp > 30000) {
                         rdb.ref(`signaling/${myUid}`).remove();
                         return;
                     }
                     isCaller = false;
+                    secondsElapsed = 0;
+                    isLoggingInProgress = false;
                     currentCallId = data.callId;
                     currentActiveTarget = { uid: data.from, name: data.name, pfp: data.pfp };
                     
@@ -457,9 +462,9 @@
                     document.getElementById('ringtone').play().catch(() => {});
 
                     rdb.ref(`calls/${currentCallId}`).on('value', s => {
-                        if (s.val()?.status === 'cancelled') {
-                            callEndedByRemote = true;
-                            hangUp();
+                        const val = s.val();
+                        if (val?.status === 'cancelled' || val?.status === 'ended') {
+                            handleHangUpEffectively(false);
                         }
                     });
                 }
@@ -484,7 +489,9 @@
                 localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
 
                 pc.onicecandidate = (e) => e.candidate && rdb.ref(`calls/${currentCallId}/candidates/${myUid}`).push(e.candidate.toJSON());
-                pc.ontrack = (e) => document.getElementById('remote-video').srcObject = e.streams[0];
+                pc.ontrack = (e) => {
+                    document.getElementById('remote-video').srcObject = e.streams[0];
+                };
 
                 await pc.setRemoteDescription(new RTCSessionDescription(callData.offer));
                 const answer = await pc.createAnswer();
@@ -508,46 +515,79 @@
         }
 
         async function hangUp() {
+            // User manually clicked hangup
+            handleHangUpEffectively(true);
+        }
+
+        async function handleHangUpEffectively(shouldNotifyRemote) {
             document.getElementById('ringtone').pause();
             document.getElementById('dialtone').pause();
             
             if (currentCallId) {
-                let finalStatus = (secondsElapsed > 0) ? 'ended' : (isCaller ? 'cancelled' : 'declined');
-                if (!callEndedByRemote) await rdb.ref(`calls/${currentCallId}/status`).set(finalStatus);
-                await logCall(finalStatus === 'ended' ? 'completed' : finalStatus);
+                let finalStatus = (secondsElapsed > 0) ? 'completed' : (isCaller ? 'cancelled' : 'declined');
+                
+                // Only the person who clicks HangUp updates the Realtime DB status
+                if (shouldNotifyRemote) {
+                    let rdbStatus = (secondsElapsed > 0) ? 'ended' : (isCaller ? 'cancelled' : 'declined');
+                    await rdb.ref(`calls/${currentCallId}`).update({ status: rdbStatus });
+                }
+
+                // Prevent duplicate logs: Only one person (the caller) writes to Firestore
+                if (isCaller && !isLoggingInProgress) {
+                    isLoggingInProgress = true;
+                    await logCall(finalStatus);
+                }
             }
 
             clearInterval(timerInterval);
             if (localStream) localStream.getTracks().forEach(t => t.stop());
             if (pc) pc.close();
+            
             rdb.ref(`signaling/${myUid}`).remove();
-            setTimeout(() => window.location.reload(), 300);
+            document.getElementById('call-screen').style.display = 'none';
+            
+            // Clean up and refresh UI
+            currentCallId = null;
+            setTimeout(() => window.location.reload(), 500);
         }
 
         function startTimer() {
             secondsElapsed = 0;
-            document.getElementById('call-timer').style.display = 'block';
+            const timerEl = document.getElementById('call-timer');
+            timerEl.style.display = 'block';
             timerInterval = setInterval(() => {
                 secondsElapsed++;
                 const mins = String(Math.floor(secondsElapsed / 60)).padStart(2, '0');
                 const secs = String(secondsElapsed % 60).padStart(2, '0');
-                document.getElementById('call-timer').innerText = `${mins}:${secs}`;
+                timerEl.innerText = `${mins}:${secs}`;
             }, 1000);
         }
 
         async function logCall(finalStatus) {
-            if(!currentActiveTarget || !currentCallId) return;
-            const dur = document.getElementById('call-timer').innerText;
-            await db.collection("call_logs").add({
-                participants: [myUid, currentActiveTarget.uid],
-                callerId: isCaller ? myUid : currentActiveTarget.uid,
-                receiverId: isCaller ? currentActiveTarget.uid : myUid,
-                callerName: isCaller ? myData.name : currentActiveTarget.name,
-                receiverName: isCaller ? currentActiveTarget.name : myData.name,
-                status: finalStatus,
-                duration: secondsElapsed > 0 ? dur : "0s",
-                timestamp: Date.now()
-            });
+            if(!currentActiveTarget) return;
+            
+            // Format duration string correctly
+            let durationStr = "0s";
+            if (secondsElapsed > 0) {
+                const m = Math.floor(secondsElapsed / 60);
+                const s = secondsElapsed % 60;
+                durationStr = m > 0 ? `${m}m ${s}s` : `${s}s`;
+            }
+
+            try {
+                await db.collection("call_logs").add({
+                    participants: [myUid, currentActiveTarget.uid],
+                    callerId: isCaller ? myUid : currentActiveTarget.uid,
+                    receiverId: isCaller ? currentActiveTarget.uid : myUid,
+                    callerName: isCaller ? (myData.name || "User") : currentActiveTarget.name,
+                    receiverName: isCaller ? currentActiveTarget.name : (myData.name || "User"),
+                    status: finalStatus,
+                    duration: durationStr,
+                    timestamp: Date.now()
+                });
+            } catch (e) {
+                console.error("Log error:", e);
+            }
         }
 
         function showCallUI(name, pfp, status, verified) {
@@ -581,5 +621,5 @@
             document.getElementById('pfp-area').style.display = isCamOn ? 'none' : 'flex';
         }
     </script>
-    </body>
-    </html>
+</body>
+</html>
