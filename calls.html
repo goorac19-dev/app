@@ -81,7 +81,7 @@
             width: 15px;
             height: 15px;
             background-color: var(--ig-blue);
-            -webkit-mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M22.5 12.5c0-1.58.8-3.04 2.12-4.03l-1.1-2.48-2.74.05a4.95(4.95 0 0 1-4.04-2.12L14.24 3l-2.47 1.1-1.1-2.48-2.5.78L7.1 5.14a4.95 4.95 0 0 1-4.04 2.12l-2.74-.05-1.1 2.48 2.12 4.03-2.12 4.03 1.1 2.48 2.74-.05a4.95 4.95 0 0 1 4.04 2.12L9.76 21l2.47-1.1 1.1 2.48 2.5-.78.78-2.73a4.95 4.95 0 0 1 4.04-2.12l2.74.05 1.1-2.48-2.12-4.03Z"/></svg>');
+            -webkit-mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M22.5 12.5c0-1.58.8-3.04 2.12-4.03l-1.1-2.48-2.74.05a4.95 4.95 0 0 1-4.04-2.12L14.24 3l-2.47 1.1-1.1-2.48-2.5.78L7.1 5.14a4.95 4.95 0 0 1-4.04 2.12l-2.74-.05-1.1 2.48 2.12 4.03-2.12 4.03 1.1 2.48 2.74-.05a4.95 4.95 0 0 1 4.04 2.12L9.76 21l2.47-1.1 1.1 2.48 2.5-.78.78-2.73a4.95 4.95 0 0 1 4.04-2.12l2.74.05 1.1-2.48-2.12-4.03Z"/></svg>');
             mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M22.5 12.5c0-1.58.8-3.04 2.12-4.03l-1.1-2.48-2.74.05a4.95 4.95 0 0 1-4.04-2.12L14.24 3l-2.47 1.1-1.1-2.48-2.5.78L7.1 5.14a4.95 4.95 0 0 1-4.04 2.12l-2.74-.05-1.1 2.48 2.12 4.03-2.12 4.03 1.1 2.48 2.74-.05a4.95 4.95 0 0 1 4.04 2.12L9.76 21l2.47-1.1 1.1 2.48 2.5-.78.78-2.73a4.95 4.95 0 0 1 4.04-2.12l2.74.05 1.1-2.48-2.12-4.03Z"/></svg>');
             -webkit-mask-size: contain;
             mask-size: contain;
@@ -382,7 +382,6 @@
         try {
             localStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
             document.getElementById('local-video').srcObject = localStream;
-            // Initially disable video track but keep the stream active
             localStream.getVideoTracks().forEach(track => track.enabled = false);
             
             setupPeerConnection(targetUid);
@@ -487,10 +486,17 @@
             const remoteVid = document.getElementById('remote-video');
             if (remoteVid.srcObject !== e.streams[0]) {
                 remoteVid.srcObject = e.streams[0];
+                
+                // If remote video track is active, ensure video layout is shown
+                e.track.onunmute = () => {
+                   if(e.track.kind === 'video') updateVideoLayout(true);
+                };
+                e.track.onmute = () => {
+                   if(e.track.kind === 'video') updateVideoLayout(isCamOn);
+                };
             }
         };
 
-        // ICE candidate listener
         rdb.ref(`calls/${currentCallId}/candidates/${targetUid}`).on('child_added', snap => { 
             pc.addIceCandidate(new RTCIceCandidate(snap.val())).catch(() => {}); 
         });
@@ -581,18 +587,23 @@
         t.enabled = isCamOn;
         
         document.getElementById('cam-btn').classList.toggle('btn-off', !isCamOn);
-        
+        updateVideoLayout(isCamOn);
+    }
+
+    // New helper to handle showing/hiding video vs PFP
+    function updateVideoLayout(shouldShowVideo) {
         const remoteVid = document.getElementById('remote-video');
         const localVid = document.getElementById('local-video');
         const pfpArea = document.getElementById('pfp-area');
 
-        if(isCamOn) {
+        if(shouldShowVideo) {
             remoteVid.style.display = 'block';
             localVid.style.display = 'block';
             pfpArea.style.display = 'none';
-            // Force play in case of browser restrictions
             remoteVid.play().catch(() => {});
         } else {
+            // Only hide if MY camera is off AND remote is not sending video
+            // For simplicity, we toggle based on local cam or presence of remote track
             remoteVid.style.display = 'none';
             localVid.style.display = 'none';
             pfpArea.style.display = 'flex';
