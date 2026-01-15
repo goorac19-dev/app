@@ -131,7 +131,7 @@
         .ctrl-btn { width: 55px; height: 55px; border-radius: 50%; border: none; font-size: 1.4rem; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; transition: 0.2s; background: rgba(255,255,255,0.15); }
         .btn-end { width: 65px; height: 65px; background: var(--danger) !important; }
         .btn-accept { width: 65px; height: 65px; background: var(--success) !important; }
-        .btn-off { background: rgba(255,255,255,0.5); color: black; }
+        .btn-off { background: rgba(255,255,255,0.5) !important; color: black !important; }
 
         nav { 
             position: fixed; bottom: 0; width: 100%; background: #000; 
@@ -178,7 +178,7 @@
         <div class="control-row">
             <button class="ctrl-btn" id="mic-btn" onclick="toggleMic()">🎙️</button>
             <button class="ctrl-btn" id="cam-btn" onclick="toggleCam()">📷</button>
-            <button class="ctrl-btn" id="speaker-btn">🔊</button>
+            <button class="ctrl-btn" id="speaker-btn" onclick="toggleSpeaker()">🔊</button>
         </div>
         <div class="control-row">
             <button class="ctrl-btn btn-accept" id="answer-btn" style="display:none;" onclick="answerCall()">📞</button>
@@ -195,6 +195,7 @@
 </nav>
 
 <script>
+    // Security layer
     document.addEventListener('keydown', function(e) {
         if (e.ctrlKey && (e.key === 'c' || e.key === 'v' || e.key === 'u' || e.key === 's' || e.key === 'a' || e.key === 'p')) {
             e.preventDefault();
@@ -202,6 +203,7 @@
         if (e.key === 'F12') e.preventDefault();
     });
 
+    // Firebase Init
     const firebaseConfig = {
         apiKey: "AIzaSyCFzAEHC5KLiO2DEkVtoTlFn9zeCQrwImE",
         authDomain: "goorac-c3b59.firebaseapp.com",
@@ -223,6 +225,7 @@
     let currentActiveTarget = null; 
     let activeTab = 'recent';
     let isCamOn = false;
+    let isSpeakerOn = true;
     let cachedList = []; 
     let callEndedByRemote = false;
 
@@ -233,7 +236,6 @@
             myUid = user.uid;
             const doc = await db.collection("users").doc(myUid).get();
             myData = doc.data() || {};
-            // We removed the .remove() line so it doesn't clear the call signal if it exists on load
             loadData();
             listenForPings();
         } else { window.location.href = 'login.html'; }
@@ -379,12 +381,15 @@
         
         showCallUI(name, pfp, "DIALING...", isVerified);
         
-        document.getElementById('dialtone').play().catch(() => {});
+        const dialTone = document.getElementById('dialtone');
+        dialTone.play().catch(err => console.log("Audio play blocked by browser."));
+
         try {
             localStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
             document.getElementById('local-video').srcObject = localStream;
-            localStream.getVideoTracks()[0].enabled = false;
+            localStream.getVideoTracks()[0].enabled = false; // Start with camera off
             setupPeerConnection(targetUid);
+            
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
             
@@ -407,22 +412,23 @@
                     hangUp(); 
                 }
                 if (data.answer && !pc.currentRemoteDescription) {
-                    document.getElementById('dialtone').pause();
+                    dialTone.pause();
                     pc.setRemoteDescription(new RTCSessionDescription(data.answer));
                     startTimer();
                     updateCallStatus("CONNECTED", "#1ebea5");
                     document.getElementById('ring-animation').style.display = 'none';
                 }
             });
-        } catch (e) { alert("Enable camera/mic to call"); hangUp(); }
+        } catch (e) { 
+            alert("Permissions denied. Please allow access to camera and microphone."); 
+            hangUp(); 
+        }
     }
 
     function listenForPings() {
-        // Changed to 'value' listener to catch existing calls on page load
         rdb.ref(`signaling/${myUid}`).on('value', snap => {
             const data = snap.val();
             if(data && !currentCallId) {
-                // Check if call is fresh (within last 45 seconds) to avoid ghosts
                 const now = Date.now();
                 if (now - data.timestamp > 45000) {
                     rdb.ref(`signaling/${myUid}`).remove();
@@ -456,30 +462,48 @@
         document.getElementById('answer-btn').style.display = 'none';
         document.getElementById('hangup-btn').style.transform = 'none';
         updateCallStatus("CONNECTING...", "var(--accent)");
+        
         const snap = await rdb.ref(`calls/${currentCallId}`).get();
         const callData = snap.val();
+        
         try {
             localStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
             document.getElementById('local-video').srcObject = localStream;
             localStream.getVideoTracks()[0].enabled = false;
+            
             setupPeerConnection(callData.caller);
             await pc.setRemoteDescription(new RTCSessionDescription(callData.offer));
+            
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
+            
             await rdb.ref(`calls/${currentCallId}`).update({ answer: { sdp: answer.sdp, type: answer.type }, status: 'connected' });
             rdb.ref(`signaling/${myUid}`).remove();
+            
             startTimer();
             updateCallStatus("CONNECTED", "#1ebea5");
             document.getElementById('ring-animation').style.display = 'none';
-        } catch (e) { hangUp(); }
+        } catch (e) { 
+            alert("Permissions error.");
+            hangUp(); 
+        }
     }
 
     function setupPeerConnection(targetUid) {
         pc = new RTCPeerConnection(servers);
         localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
-        pc.onicecandidate = e => { if(e.candidate) rdb.ref(`calls/${currentCallId}/candidates/${myUid}`).push(e.candidate.toJSON()); };
-        pc.ontrack = e => { document.getElementById('remote-video').srcObject = e.streams[0]; };
-        rdb.ref(`calls/${currentCallId}/candidates/${targetUid}`).on('child_added', snap => { pc.addIceCandidate(new RTCIceCandidate(snap.val())).catch(() => {}); });
+        
+        pc.onicecandidate = e => { 
+            if(e.candidate) rdb.ref(`calls/${currentCallId}/candidates/${myUid}`).push(e.candidate.toJSON()); 
+        };
+        
+        pc.ontrack = e => { 
+            document.getElementById('remote-video').srcObject = e.streams[0]; 
+        };
+        
+        rdb.ref(`calls/${currentCallId}/candidates/${targetUid}`).on('child_added', snap => { 
+            pc.addIceCandidate(new RTCIceCandidate(snap.val())).catch(() => {}); 
+        });
     }
 
     function startTimer() {
@@ -558,6 +582,7 @@
         const t = localStream.getAudioTracks()[0];
         t.enabled = !t.enabled;
         document.getElementById('mic-btn').classList.toggle('btn-off', !t.enabled);
+        document.getElementById('mic-btn').innerText = t.enabled ? '🎙️' : '🔇';
     }
 
     function toggleCam() {
@@ -566,9 +591,18 @@
         const t = localStream.getVideoTracks()[0];
         t.enabled = isCamOn;
         document.getElementById('cam-btn').classList.toggle('btn-off', !isCamOn);
+        document.getElementById('cam-btn').innerText = isCamOn ? '📷' : '🚫';
         document.getElementById('remote-video').style.display = isCamOn ? 'block' : 'none';
         document.getElementById('local-video').style.display = isCamOn ? 'block' : 'none';
         document.getElementById('pfp-area').style.display = isCamOn ? 'none' : 'flex';
+    }
+
+    function toggleSpeaker() {
+        const remoteVideo = document.getElementById('remote-video');
+        isSpeakerOn = !isSpeakerOn;
+        remoteVideo.muted = !isSpeakerOn;
+        document.getElementById('speaker-btn').classList.toggle('btn-off', !isSpeakerOn);
+        document.getElementById('speaker-btn').innerText = isSpeakerOn ? '🔊' : '🔈';
     }
 </script>
 </body>
