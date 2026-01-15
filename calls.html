@@ -421,7 +421,6 @@
                     if (!data) return;
                     
                     if (data.status === 'declined' || data.status === 'cancelled' || data.status === 'ended') {
-                        // Remote end action - clean up without writing status again
                         handleHangUpEffectively(false);
                     }
                     if (data.answer && !pc.currentRemoteDescription) {
@@ -515,7 +514,6 @@
         }
 
         async function hangUp() {
-            // User manually clicked hangup
             handleHangUpEffectively(true);
         }
 
@@ -526,35 +524,39 @@
             if (currentCallId) {
                 let finalStatus = (secondsElapsed > 0) ? 'completed' : (isCaller ? 'cancelled' : 'declined');
                 
-                // Only the person who clicks HangUp updates the Realtime DB status
                 if (shouldNotifyRemote) {
                     let rdbStatus = (secondsElapsed > 0) ? 'ended' : (isCaller ? 'cancelled' : 'declined');
                     await rdb.ref(`calls/${currentCallId}`).update({ status: rdbStatus });
                 }
 
-                // Prevent duplicate logs: Only one person (the caller) writes to Firestore
                 if (isCaller && !isLoggingInProgress) {
                     isLoggingInProgress = true;
                     await logCall(finalStatus);
                 }
             }
 
-            clearInterval(timerInterval);
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+            
             if (localStream) localStream.getTracks().forEach(t => t.stop());
             if (pc) pc.close();
             
             rdb.ref(`signaling/${myUid}`).remove();
             document.getElementById('call-screen').style.display = 'none';
             
-            // Clean up and refresh UI
             currentCallId = null;
             setTimeout(() => window.location.reload(), 500);
         }
 
         function startTimer() {
+            if (timerInterval) clearInterval(timerInterval); // Prevent double timers
             secondsElapsed = 0;
             const timerEl = document.getElementById('call-timer');
             timerEl.style.display = 'block';
+            timerEl.innerText = "00:00";
+            
             timerInterval = setInterval(() => {
                 secondsElapsed++;
                 const mins = String(Math.floor(secondsElapsed / 60)).padStart(2, '0');
@@ -566,7 +568,6 @@
         async function logCall(finalStatus) {
             if(!currentActiveTarget) return;
             
-            // Format duration string correctly
             let durationStr = "0s";
             if (secondsElapsed > 0) {
                 const m = Math.floor(secondsElapsed / 60);
