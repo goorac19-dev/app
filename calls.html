@@ -53,27 +53,12 @@
             -webkit-overflow-scrolling: touch; 
         }
 
-        /* Skeleton Loading Animation */
-        .skeleton {
-            background: linear-gradient(90deg, #111 25%, #222 50%, #111 75%);
-            background-size: 200% 100%;
-            animation: loading 1.5s infinite;
-            border-radius: 4px;
-        }
-        @keyframes loading {
-            0% { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
-        }
-        .skeleton-item { display: flex; align-items: center; padding: 15px 20px; gap: 15px; }
-        .sk-pfp { width: 50px; height: 50px; border-radius: 50%; }
-        .sk-text { height: 12px; width: 60%; margin-bottom: 8px; }
-        .sk-meta { height: 10px; width: 40%; }
-
         .call-item { display: flex; align-items: center; padding: 15px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); }
         .call-pfp { width: 50px; height: 50px; border-radius: 50%; margin-right: 15px; object-fit: cover; border: 1px solid var(--border); }
         .call-info { flex: 1; }
         .u-name { font-weight: 700; display: flex; align-items: center; gap: 4px; }
         
+        /* UPDATED PROFESSIONAL VERIFICATION BADGE */
         .v-badge { 
             display: inline-flex;
             align-items: center;
@@ -81,6 +66,7 @@
             width: 15px;
             height: 15px;
             background-color: var(--ig-blue);
+            /* Crisp SVG Starburst Mask */
             -webkit-mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M22.5 12.5c0-1.58.8-3.04 2.12-4.03l-1.1-2.48-2.74.05a4.95 4.95 0 0 1-4.04-2.12L14.24 3l-2.47 1.1-1.1-2.48-2.5.78L7.1 5.14a4.95 4.95 0 0 1-4.04 2.12l-2.74-.05-1.1 2.48 2.12 4.03-2.12 4.03 1.1 2.48 2.74-.05a4.95 4.95 0 0 1 4.04 2.12L9.76 21l2.47-1.1 1.1 2.48 2.5-.78.78-2.73a4.95 4.95 0 0 1 4.04-2.12l2.74.05 1.1-2.48-2.12-4.03Z"/></svg>');
             mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M22.5 12.5c0-1.58.8-3.04 2.12-4.03l-1.1-2.48-2.74.05a4.95 4.95 0 0 1-4.04-2.12L14.24 3l-2.47 1.1-1.1-2.48-2.5.78L7.1 5.14a4.95 4.95 0 0 1-4.04 2.12l-2.74-.05-1.1 2.48 2.12 4.03-2.12 4.03 1.1 2.48 2.74-.05a4.95 4.95 0 0 1 4.04 2.12L9.76 21l2.47-1.1 1.1 2.48 2.5-.78.78-2.73a4.95 4.95 0 0 1 4.04-2.12l2.74.05 1.1-2.48-2.12-4.03Z"/></svg>');
             -webkit-mask-size: contain;
@@ -115,7 +101,7 @@
             display: none; flex-direction: column; align-items: center; 
             justify-content: space-between; padding: 60px 20px 40px;
         }
-        #remote-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; display: none; background: #000; }
+        #remote-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; display: none; }
         #local-video { position: absolute; top: 40px; right: 20px; width: 90px; height: 130px; border-radius: 12px; border: 1.5px solid rgba(255,255,255,0.3); object-fit: cover; z-index: 10; display: none; background: #000; }
         .call-header { z-index: 5; text-align: center; }
         .call-header h2 { font-size: 1.8rem; margin: 0 0 8px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 5px; }
@@ -233,6 +219,7 @@
             myUid = user.uid;
             const doc = await db.collection("users").doc(myUid).get();
             myData = doc.data() || {};
+            rdb.ref(`signaling/${myUid}`).remove();
             loadData();
             listenForPings();
         } else { window.location.href = 'login.html'; }
@@ -242,22 +229,6 @@
         const query = e.target.value.toLowerCase();
         renderFilteredList(query);
     });
-
-    function showSkeleton() {
-        const list = document.getElementById('list-container');
-        let html = '';
-        for(let i=0; i<6; i++) {
-            html += `
-                <div class="skeleton-item">
-                    <div class="sk-pfp skeleton"></div>
-                    <div style="flex:1">
-                        <div class="sk-text skeleton"></div>
-                        <div class="sk-meta skeleton"></div>
-                    </div>
-                </div>`;
-        }
-        list.innerHTML = html;
-    }
 
     function renderFilteredList(query = '') {
         const list = document.getElementById('list-container');
@@ -284,7 +255,6 @@
     }
 
     function switchTab(tab) {
-        if (activeTab === tab) return;
         activeTab = tab;
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         document.getElementById(`tab-${tab}`).classList.add('active');
@@ -293,7 +263,8 @@
     }
 
     async function loadData() {
-        showSkeleton();
+        const list = document.getElementById('list-container');
+        list.innerHTML = `<p style="text-align:center; padding:20px; opacity:0.5;">Loading...</p>`;
         if (activeTab === 'recent') await loadRecent(); else await loadContacts();
     }
 
@@ -345,28 +316,21 @@
 
     async function loadContacts() {
         const following = myData.following || [];
-        if (following.length === 0) {
-            document.getElementById('list-container').innerHTML = `<p style="text-align:center; padding:20px; opacity:0.5;">No contacts found</p>`;
-            return;
-        }
-
-        const contactPromises = following.map(async (uid) => {
+        let contacts = [];
+        for (const uid of following) {
             const uDoc = await db.collection("users").doc(uid).get();
             const u = uDoc.data();
             if(u && u.following && u.following.includes(myUid)) {
-                return {
+                contacts.push({
                     uid: uid,
                     name: u.name || u.username,
                     pfp: u.photoURL,
                     verified: u.verified || false,
                     metaText: `@${u.username || 'unknown'}`
-                };
+                });
             }
-            return null;
-        });
-
-        const results = await Promise.all(contactPromises);
-        cachedList = results.filter(c => c !== null);
+        }
+        cachedList = contacts;
         renderFilteredList();
     }
 
@@ -382,8 +346,7 @@
         try {
             localStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
             document.getElementById('local-video').srcObject = localStream;
-            localStream.getVideoTracks().forEach(track => track.enabled = false);
-            
+            localStream.getVideoTracks()[0].enabled = false;
             setupPeerConnection(targetUid);
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
@@ -402,7 +365,7 @@
             rdb.ref(`calls/${currentCallId}`).on('value', snap => {
                 const data = snap.val();
                 if (!data) return;
-                if (data.status === 'declined' || data.status === 'ended' || data.status === 'cancelled') { 
+                if (data.status === 'declined' || data.status === 'ended') { 
                     callEndedByRemote = true;
                     hangUp(); 
                 }
@@ -421,12 +384,6 @@
         rdb.ref(`signaling/${myUid}`).on('value', snap => {
             const data = snap.val();
             if(data && !currentCallId) {
-                const now = Date.now();
-                if (now - data.timestamp > 45000) {
-                    rdb.ref(`signaling/${myUid}`).remove();
-                    return;
-                }
-
                 isCaller = false;
                 secondsElapsed = 0;
                 currentCallId = data.callId;
@@ -459,8 +416,7 @@
         try {
             localStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
             document.getElementById('local-video').srcObject = localStream;
-            localStream.getVideoTracks().forEach(track => track.enabled = false);
-
+            localStream.getVideoTracks()[0].enabled = false;
             setupPeerConnection(callData.caller);
             await pc.setRemoteDescription(new RTCSessionDescription(callData.offer));
             const answer = await pc.createAnswer();
@@ -475,31 +431,10 @@
 
     function setupPeerConnection(targetUid) {
         pc = new RTCPeerConnection(servers);
-        
         localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
-        
-        pc.onicecandidate = e => { 
-            if(e.candidate) rdb.ref(`calls/${currentCallId}/candidates/${myUid}`).push(e.candidate.toJSON()); 
-        };
-        
-        pc.ontrack = e => { 
-            const remoteVid = document.getElementById('remote-video');
-            if (remoteVid.srcObject !== e.streams[0]) {
-                remoteVid.srcObject = e.streams[0];
-                
-                // If remote video track is active, ensure video layout is shown
-                e.track.onunmute = () => {
-                   if(e.track.kind === 'video') updateVideoLayout(true);
-                };
-                e.track.onmute = () => {
-                   if(e.track.kind === 'video') updateVideoLayout(isCamOn);
-                };
-            }
-        };
-
-        rdb.ref(`calls/${currentCallId}/candidates/${targetUid}`).on('child_added', snap => { 
-            pc.addIceCandidate(new RTCIceCandidate(snap.val())).catch(() => {}); 
-        });
+        pc.onicecandidate = e => { if(e.candidate) rdb.ref(`calls/${currentCallId}/candidates/${myUid}`).push(e.candidate.toJSON()); };
+        pc.ontrack = e => { document.getElementById('remote-video').srcObject = e.streams[0]; };
+        rdb.ref(`calls/${currentCallId}/candidates/${targetUid}`).on('child_added', snap => { pc.addIceCandidate(new RTCIceCandidate(snap.val())).catch(() => {}); });
     }
 
     function startTimer() {
@@ -520,11 +455,9 @@
     }
 
     async function logCall(finalStatus) {
-        if(!currentActiveTarget || !currentCallId) return;
+        if(!currentActiveTarget) return;
         const dur = document.getElementById('call-timer').innerText;
-        const uniqueLogId = currentCallId + "_" + Math.floor(Date.now() / 10000);
-
-        await db.collection("call_logs").doc(uniqueLogId).set({
+        await db.collection("call_logs").add({
             participants: [myUid, currentActiveTarget.uid],
             callerId: isCaller ? myUid : currentActiveTarget.uid,
             callerName: isCaller ? (myData.name || "User") : currentActiveTarget.name,
@@ -535,7 +468,7 @@
             status: finalStatus,
             duration: secondsElapsed > 0 ? dur : "0s",
             timestamp: Date.now()
-        }, { merge: true });
+        });
     }
 
     async function hangUp() {
@@ -585,29 +518,10 @@
         isCamOn = !isCamOn;
         const t = localStream.getVideoTracks()[0];
         t.enabled = isCamOn;
-        
         document.getElementById('cam-btn').classList.toggle('btn-off', !isCamOn);
-        updateVideoLayout(isCamOn);
-    }
-
-    // New helper to handle showing/hiding video vs PFP
-    function updateVideoLayout(shouldShowVideo) {
-        const remoteVid = document.getElementById('remote-video');
-        const localVid = document.getElementById('local-video');
-        const pfpArea = document.getElementById('pfp-area');
-
-        if(shouldShowVideo) {
-            remoteVid.style.display = 'block';
-            localVid.style.display = 'block';
-            pfpArea.style.display = 'none';
-            remoteVid.play().catch(() => {});
-        } else {
-            // Only hide if MY camera is off AND remote is not sending video
-            // For simplicity, we toggle based on local cam or presence of remote track
-            remoteVid.style.display = 'none';
-            localVid.style.display = 'none';
-            pfpArea.style.display = 'flex';
-        }
+        document.getElementById('remote-video').style.display = isCamOn ? 'block' : 'none';
+        document.getElementById('local-video').style.display = isCamOn ? 'block' : 'none';
+        document.getElementById('pfp-area').style.display = isCamOn ? 'none' : 'flex';
     }
 </script>
 </body>
