@@ -12,164 +12,102 @@
 
     <style>
         :root {
-            --bg: #0b141a;
-            --accent: #00d2ff; 
-            --border: rgba(255, 255, 255, 0.1);
-            --text-dim: #888; 
-            --danger: #ff4444; 
-            --success: #1ebea5;
-            --ig-blue: #0095f6;
+            --bg: #000; --accent: #00d2ff; --border: rgba(255, 255, 255, 0.1);
+            --text-dim: #888; --danger: #ff4444; --success: #00ff88;
         }
 
-        /* Anti-Copy CSS */
         body {
-            background: #000; color: white; margin: 0;
+            background: var(--bg); color: white; margin: 0;
             font-family: -apple-system, system-ui, sans-serif;
-            height: 100vh; overflow: hidden;
-            display: flex; flex-direction: column;
-            -webkit-user-select: none;
-            -ms-user-select: none;
-            user-select: none;
-            -webkit-touch-callout: none;
+            padding-bottom: 100px; overflow: hidden;
         }
 
-        input {
-            -webkit-user-select: text;
-            user-select: text;
-        }
-
-        header { padding: 15px 20px; border-bottom: 1px solid var(--border); background: #000; }
+        header { position: sticky; top: 0; background: rgba(0,0,0,0.8); padding: 15px 20px; border-bottom: 1px solid var(--border); backdrop-filter: blur(10px); z-index: 100; }
         .header-logo { font-weight: 900; font-size: 1.4rem; color: var(--accent); }
+
         .search-box { padding: 15px; }
-        .search-box input { width: 100%; background: #111; border: 1px solid var(--border); padding: 12px; border-radius: 12px; color: white; outline: none; box-sizing: border-box; }
+        .search-box input {
+            width: 100%; background: #111; border: 1px solid var(--border);
+            padding: 12px; border-radius: 12px; color: white; outline: none;
+        }
+
         .tabs { display: flex; padding: 0 20px 10px; gap: 20px; border-bottom: 1px solid var(--border); }
         .tab { font-size: 0.8rem; font-weight: 800; color: var(--text-dim); cursor: pointer; padding-bottom: 5px; }
         .tab.active { color: var(--accent); border-bottom: 2px solid var(--accent); }
 
-        #list-container { 
-            flex: 1; 
-            overflow-y: auto; 
-            padding-bottom: 80px; 
-            -webkit-overflow-scrolling: touch; 
-        }
-
         .call-item { display: flex; align-items: center; padding: 15px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); }
         .call-pfp { width: 50px; height: 50px; border-radius: 50%; margin-right: 15px; object-fit: cover; border: 1px solid var(--border); }
         .call-info { flex: 1; }
-        .u-name { font-weight: 700; display: flex; align-items: center; gap: 4px; }
-        
-        /* UPDATED PROFESSIONAL VERIFICATION BADGE */
-        .v-badge { 
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 15px;
-            height: 15px;
-            background-color: var(--ig-blue);
-            /* Crisp SVG Starburst Mask */
-            -webkit-mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M22.5 12.5c0-1.58.8-3.04 2.12-4.03l-1.1-2.48-2.74.05a4.95 4.95 0 0 1-4.04-2.12L14.24 3l-2.47 1.1-1.1-2.48-2.5.78L7.1 5.14a4.95 4.95 0 0 1-4.04 2.12l-2.74-.05-1.1 2.48 2.12 4.03-2.12 4.03 1.1 2.48 2.74-.05a4.95 4.95 0 0 1 4.04 2.12L9.76 21l2.47-1.1 1.1 2.48 2.5-.78.78-2.73a4.95 4.95 0 0 1 4.04-2.12l2.74.05 1.1-2.48-2.12-4.03Z"/></svg>');
-            mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M22.5 12.5c0-1.58.8-3.04 2.12-4.03l-1.1-2.48-2.74.05a4.95 4.95 0 0 1-4.04-2.12L14.24 3l-2.47 1.1-1.1-2.48-2.5.78L7.1 5.14a4.95 4.95 0 0 1-4.04 2.12l-2.74-.05-1.1 2.48 2.12 4.03-2.12 4.03 1.1 2.48 2.74-.05a4.95 4.95 0 0 1 4.04 2.12L9.76 21l2.47-1.1 1.1 2.48 2.5-.78.78-2.73a4.95 4.95 0 0 1 4.04-2.12l2.74.05 1.1-2.48-2.12-4.03Z"/></svg>');
-            -webkit-mask-size: contain;
-            mask-size: contain;
-            -webkit-mask-repeat: no-repeat;
-            mask-repeat: no-repeat;
-            position: relative;
-            margin-left: 4px;
-            flex-shrink: 0;
-            vertical-align: middle;
-        }
-        .v-badge::before {
-            content: "";
-            width: 3.5px;
-            height: 6.5px;
-            border: solid white;
-            border-width: 0 1.8px 1.8px 0;
-            transform: translateY(-1px) rotate(45deg);
-        }
-
+        .u-name { font-weight: 700; }
         .call-meta { font-size: 0.75rem; color: var(--text-dim); }
+        
+        /* Status Colors */
         .status-missed { color: var(--danger); font-weight: bold; }
         .status-incoming { color: var(--success); }
         .status-outgoing { color: var(--accent); }
         .time-stamp { font-size: 0.7rem; opacity: 0.6; margin-left: 5px; }
+
         .btn-call { width: 40px; height: 40px; border-radius: 50%; border: none; background: rgba(0, 210, 255, 0.1); color: var(--accent); cursor: pointer; }
 
         #call-screen {
-            position: fixed; inset: 0; 
-            background: linear-gradient(to bottom, #0b141a, #121b22); 
-            z-index: 9999;
+            position: fixed; inset: 0; background: #000; z-index: 9999;
             display: none; flex-direction: column; align-items: center; 
-            justify-content: space-between; padding: 60px 20px 40px;
+            justify-content: space-between; padding: 10vh 20px 8vh;
         }
-        #remote-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; display: none; }
-        #local-video { position: absolute; top: 40px; right: 20px; width: 90px; height: 130px; border-radius: 12px; border: 1.5px solid rgba(255,255,255,0.3); object-fit: cover; z-index: 10; display: none; background: #000; }
-        .call-header { z-index: 5; text-align: center; }
-        .call-header h2 { font-size: 1.8rem; margin: 0 0 8px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 5px; }
-        #call-status { font-size: 0.9rem; color: #aebac1; text-transform: uppercase; letter-spacing: 1.5px; margin: 0; }
-        #call-timer { font-size: 1rem; color: white; margin-top: 5px; font-weight: 400; display: none; }
-        .call-body { z-index: 5; flex: 1; display: flex; align-items: center; justify-content: center; width: 100%; }
-        .big-pfp-container { position: relative; }
-        #target-pfp { width: 180px; height: 180px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.1); }
-        .pulse { position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--accent); animation: pulse-ring 2s infinite; }
-        @keyframes pulse-ring { 0% { transform: scale(1); opacity: 0.5; } 100% { transform: scale(1.5); opacity: 0; } }
-        .call-controls { display: flex; flex-direction: column; gap: 30px; z-index: 20; width: 100%; align-items: center; }
-        .control-row { display: flex; gap: 25px; align-items: center; justify-content: center; }
-        .ctrl-btn { width: 55px; height: 55px; border-radius: 50%; border: none; font-size: 1.4rem; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; transition: 0.2s; background: rgba(255,255,255,0.15); }
-        .btn-end { width: 65px; height: 65px; background: var(--danger) !important; }
-        .btn-accept { width: 65px; height: 65px; background: var(--success) !important; }
-        .btn-off { background: rgba(255,255,255,0.5); color: black; }
+        #remote-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #111; }
+        #local-video { position: absolute; top: 50px; right: 20px; width: 90px; height: 130px; border-radius: 12px; border: 1.5px solid var(--accent); object-fit: cover; z-index: 10; background: #111; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        
+        .caller-details { z-index: 5; text-align: center; flex: 1; display: flex; flex-direction: column; justify-content: center; width: 100%; }
+        .caller-details img { width: 150px; height: 150px; border-radius: 50%; margin: 0 auto 25px; border: 3px solid var(--accent); box-shadow: 0 0 30px rgba(0, 210, 255, 0.2); }
+        .caller-details h2 { font-size: 1.8rem; margin: 10px 0; letter-spacing: -0.5px; }
+        #call-timer { font-size: 1.1rem; font-weight: 600; margin-top: 15px; color: white; display: none; opacity: 0.8; }
 
-        nav { 
-            position: fixed; bottom: 0; width: 100%; background: #000; 
-            display: flex; justify-content: space-around; padding: 15px 0; 
-            border-top: 1px solid var(--border); z-index: 100;
-        }
+        .call-controls { display: flex; gap: 20px; z-index: 20; width: 100%; justify-content: center; padding-bottom: 20px; }
+        .ctrl-btn { width: 68px; height: 68px; border-radius: 50%; border: none; font-size: 1.6rem; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; transition: transform 0.2s; }
+        .ctrl-btn:active { transform: scale(0.9); }
+        .btn-end { background: var(--danger); box-shadow: 0 0 20px rgba(255, 68, 68, 0.3); }
+        .btn-accept { background: var(--success); box-shadow: 0 0 20px rgba(0, 255, 136, 0.3); }
+        .btn-opt { background: rgba(255,255,255,0.1); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.1); }
+
+        nav { position: fixed; bottom: 0; width: 100%; background: #000; display: flex; justify-content: space-around; padding: 15px 0; border-top: 1px solid var(--border); }
         .nav-icon { font-size: 1.5rem; color: #444; text-decoration: none; }
         .nav-icon.active { color: var(--accent); }
     </style>
 </head>
-<body oncontextmenu="return false;">
+<body>
 
-<audio id="ringtone" loop preload="auto"><source src="https://assets.mixkit.co/active_storage/sfx/1359/1359-preview.mp3" type="audio/mpeg"></audio>
-<audio id="dialtone" loop preload="auto"><source src="https://www.soundjay.com/phone/sounds/phone-calling-1.mp3" type="audio/mpeg"></audio>
+<audio id="ringtone" loop><source src="https://assets.mixkit.co/active_storage/sfx/1359/1359-preview.mp3" type="audio/mpeg"></audio>
+<audio id="dialtone" loop><source src="https://www.soundjay.com/phone/sounds/phone-calling-1.mp3" type="audio/mpeg"></audio>
 
-<header>
-    <div class="header-logo">GOORAC</div>
-    <div class="search-box">
-        <input type="text" id="search" placeholder="Search..." autocomplete="off">
-    </div>
-    <div class="tabs">
-        <div class="tab active" id="tab-recent" onclick="switchTab('recent')">Recent</div>
-        <div class="tab" id="tab-contacts" onclick="switchTab('contacts')">Contacts</div>
-    </div>
-</header>
+<header><div class="header-logo">GOORAC</div></header>
+
+<div class="search-box">
+    <input type="text" id="search" placeholder="Search...">
+</div>
+
+<div class="tabs">
+    <div class="tab active" id="tab-recent" onclick="switchTab('recent')">Recent</div>
+    <div class="tab" id="tab-contacts" onclick="switchTab('contacts')">Contacts</div>
+</div>
 
 <div id="list-container"></div>
 
 <div id="call-screen">
     <video id="remote-video" autoplay playsinline></video>
     <video id="local-video" autoplay playsinline muted></video>
-    <div class="call-header">
+
+    <div class="caller-details" id="id-card">
+        <img src="" id="target-pfp">
         <h2 id="target-name">User</h2>
-        <p id="call-status">RINGING...</p>
+        <p id="call-status" style="color: var(--accent); letter-spacing: 2px; font-weight: 800; font-size: 0.85rem;">RINGING...</p>
         <div id="call-timer">00:00</div>
     </div>
-    <div class="call-body" id="pfp-area">
-        <div class="big-pfp-container">
-            <div class="pulse" id="ring-animation"></div>
-            <img src="" id="target-pfp">
-        </div>
-    </div>
+
     <div class="call-controls">
-        <div class="control-row">
-            <button class="ctrl-btn" id="mic-btn" onclick="toggleMic()">🎙️</button>
-            <button class="ctrl-btn" id="cam-btn" onclick="toggleCam()">📷</button>
-            <button class="ctrl-btn" id="speaker-btn">🔊</button>
-        </div>
-        <div class="control-row">
-            <button class="ctrl-btn btn-accept" id="answer-btn" style="display:none;" onclick="answerCall()">📞</button>
-            <button class="ctrl-btn btn-end" id="hangup-btn" onclick="hangUp()">📞</button>
-        </div>
+        <button class="ctrl-btn btn-opt" id="mic-btn" onclick="toggleMic()">🎙️</button>
+        <button class="ctrl-btn btn-end" id="hangup-btn" onclick="hangUp()">❌</button>
+        <button class="ctrl-btn btn-accept" id="answer-btn" style="display:none;" onclick="answerCall()">✅</button>
+        <button class="ctrl-btn btn-opt" id="cam-btn" onclick="toggleCam()">📷</button>
     </div>
 </div>
 
@@ -181,13 +119,6 @@
 </nav>
 
 <script>
-    document.addEventListener('keydown', function(e) {
-        if (e.ctrlKey && (e.key === 'c' || e.key === 'v' || e.key === 'u' || e.key === 's' || e.key === 'a' || e.key === 'p')) {
-            e.preventDefault();
-        }
-        if (e.key === 'F12') e.preventDefault();
-    });
-
     const firebaseConfig = {
         apiKey: "AIzaSyCFzAEHC5KLiO2DEkVtoTlFn9zeCQrwImE",
         authDomain: "goorac-c3b59.firebaseapp.com",
@@ -206,11 +137,8 @@
     let currentCallId = null;
     let isCaller = false;
     let secondsElapsed = 0;
-    let currentActiveTarget = null; 
+    let currentActiveTarget = null; // Track who we are talking to for logging
     let activeTab = 'recent';
-    let isCamOn = false;
-    let cachedList = []; 
-    let callEndedByRemote = false;
 
     const servers = { iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }] };
 
@@ -219,165 +147,152 @@
             myUid = user.uid;
             const doc = await db.collection("users").doc(myUid).get();
             myData = doc.data() || {};
-            rdb.ref(`signaling/${myUid}`).remove();
             loadData();
             listenForPings();
         } else { window.location.href = 'login.html'; }
     });
 
-    document.getElementById('search').addEventListener('input', (e) => {
-        const query = e.target.value.toLowerCase();
-        renderFilteredList(query);
-    });
-
-    function renderFilteredList(query = '') {
-        const list = document.getElementById('list-container');
-        const filtered = cachedList.filter(item => item.name.toLowerCase().includes(query));
-        
-        if (filtered.length === 0) {
-            list.innerHTML = `<p style="text-align:center; padding:20px; opacity:0.5;">No results found</p>`;
-            return;
-        }
-
-        list.innerHTML = "";
-        filtered.forEach(item => {
-            const badge = (item.verified === true) ? `<span class="v-badge"></span>` : "";
-            list.innerHTML += `
-                <div class="call-item">
-                    <img src="${item.pfp || 'https://via.placeholder.com/150'}" class="call-pfp">
-                    <div class="call-info">
-                        <div class="u-name">${item.name} ${badge}</div>
-                        <div class="call-meta ${item.statusClass || ''}">${item.metaText}</div>
-                    </div>
-                    <button class="btn-call" onclick="startCall('${item.uid}', '${item.name}', '${item.pfp}', ${item.verified})">📞</button>
-                </div>`;
-        });
-    }
-
     function switchTab(tab) {
         activeTab = tab;
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         document.getElementById(`tab-${tab}`).classList.add('active');
-        document.getElementById('search').value = "";
         loadData();
     }
 
     async function loadData() {
         const list = document.getElementById('list-container');
         list.innerHTML = `<p style="text-align:center; padding:20px; opacity:0.5;">Loading...</p>`;
-        if (activeTab === 'recent') await loadRecent(); else await loadContacts();
+        
+        if (activeTab === 'recent') {
+            await loadRecent();
+        } else {
+            await loadContacts();
+        }
     }
 
     async function loadRecent() {
-        try {
-            const snapshot = await db.collection("call_logs")
-                .where('participants', 'array-contains', myUid)
-                .orderBy('timestamp', 'desc')
-                .limit(10)
-                .get();
-                
-            if (snapshot.empty) {
-                document.getElementById('list-container').innerHTML = `<p style="text-align:center; padding:20px; opacity:0.5;">No call history</p>`;
-                cachedList = [];
-                return;
+        const list = document.getElementById('list-container');
+        const snapshot = await db.collection("call_logs")
+            .where('participants', 'array-contains', myUid)
+            .orderBy('timestamp', 'desc')
+            .limit(10)
+            .get();
+
+        if (snapshot.empty) {
+            list.innerHTML = `<p style="text-align:center; padding:20px; opacity:0.5;">No recent calls</p>`;
+            return;
+        }
+
+        list.innerHTML = "";
+        snapshot.forEach(doc => {
+            const call = doc.data();
+            const isOutgoing = call.callerId === myUid;
+            const otherUser = isOutgoing ? call.receiverName : call.callerName;
+            const otherPfp = isOutgoing ? call.receiverPfp : call.callerPfp;
+            const otherUid = isOutgoing ? call.receiverId : call.callerId;
+            
+            let statusText = "";
+            let statusClass = "";
+            
+            if (call.status === 'missed' || call.status === 'declined' || call.status === 'cancelled') {
+                statusText = isOutgoing ? "Cancelled" : "Missed";
+                statusClass = "status-missed";
+            } else {
+                statusText = isOutgoing ? "Outgoing" : "Incoming";
+                statusClass = isOutgoing ? "status-outgoing" : "status-incoming";
             }
 
-            let calls = [];
-            snapshot.forEach(doc => calls.push(doc.data()));
-            
-            cachedList = await Promise.all(calls.map(async call => {
-                const isOutgoing = call.callerId === myUid;
-                const otherUid = isOutgoing ? call.receiverId : call.callerId;
-                const uDoc = await db.collection("users").doc(otherUid).get();
-                const uData = uDoc.data() || {};
-                
-                let statusText = (call.status === 'missed' || call.status === 'declined' || call.status === 'cancelled') 
-                    ? (isOutgoing ? "Cancelled" : "Missed") 
-                    : (isOutgoing ? "Outgoing" : "Incoming");
-                
-                let statusClass = (statusText === "Missed" || statusText === "Cancelled") ? "status-missed" : (isOutgoing ? "status-outgoing" : "status-incoming");
-                const time = new Date(call.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            const time = new Date(call.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
-                return {
-                    uid: otherUid,
-                    name: isOutgoing ? (call.receiverName || uData.name) : (call.callerName || uData.name),
-                    pfp: isOutgoing ? (call.receiverPfp || uData.photoURL) : (call.callerPfp || uData.photoURL),
-                    verified: uData.verified || false,
-                    statusClass: statusClass,
-                    metaText: `${statusText} • ${call.duration || '0s'} • ${time}`
-                };
-            }));
-            renderFilteredList();
-        } catch (e) { 
-            console.error("Firestore Error:", e);
-            document.getElementById('list-container').innerHTML = `<div style="text-align:center; padding:40px; opacity:0.6;"><p>Error loading recent calls.</p></div>`;
-        }
+            list.innerHTML += `
+                <div class="call-item">
+                    <img src="${otherPfp || 'https://via.placeholder.com/150'}" class="call-pfp">
+                    <div class="call-info">
+                        <div class="u-name">${otherUser}</div>
+                        <div class="call-meta ${statusClass}">
+                            ${statusText} • ${call.duration || '0s'} <span class="time-stamp">${time}</span>
+                        </div>
+                    </div>
+                    <button class="btn-call" onclick="startCall('${otherUid}', '${otherUser}', '${otherPfp}')">📞</button>
+                </div>`;
+        });
     }
 
     async function loadContacts() {
+        const list = document.getElementById('list-container');
+        list.innerHTML = "";
         const following = myData.following || [];
-        let contacts = [];
+        let count = 0;
+
         for (const uid of following) {
             const uDoc = await db.collection("users").doc(uid).get();
             const u = uDoc.data();
+            // Mutual check: They must follow you back
             if(u && u.following && u.following.includes(myUid)) {
-                contacts.push({
-                    uid: uid,
-                    name: u.name || u.username,
-                    pfp: u.photoURL,
-                    verified: u.verified || false,
-                    metaText: `@${u.username || 'unknown'}`
-                });
+                count++;
+                list.innerHTML += `
+                    <div class="call-item">
+                        <img src="${u.photoURL || 'https://via.placeholder.com/150'}" class="call-pfp">
+                        <div class="call-info">
+                            <div class="u-name">${u.name || u.username}</div>
+                            <div class="call-meta">Mutual Follower</div>
+                        </div>
+                        <button class="btn-call" onclick="startCall('${uid}', '${u.name || u.username}', '${u.photoURL}')">📞</button>
+                    </div>`;
             }
         }
-        cachedList = contacts;
-        renderFilteredList();
+        if (count === 0) list.innerHTML = `<p style="text-align:center; padding:20px; opacity:0.5;">No mutual contacts found</p>`;
     }
 
-    async function startCall(targetUid, name, pfp, isVerified) {
+    async function startCall(targetUid, name, pfp) {
         isCaller = true;
-        secondsElapsed = 0;
-        currentActiveTarget = { uid: targetUid, name: name, pfp: pfp, verified: isVerified };
+        currentActiveTarget = { uid: targetUid, name: name, pfp: pfp };
         currentCallId = "call_" + [myUid, targetUid].sort().join("_");
-        
-        showCallUI(name, pfp, "DIALING...", isVerified);
-        
+        showCallUI(name, pfp, "DIALING...");
         document.getElementById('dialtone').play().catch(() => {});
-        try {
-            localStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
-            document.getElementById('local-video').srcObject = localStream;
-            localStream.getVideoTracks()[0].enabled = false;
-            setupPeerConnection(targetUid);
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            
-            await rdb.ref(`calls/${currentCallId}`).set({ 
-                offer: { sdp: offer.sdp, type: offer.type }, 
-                caller: myUid, callerName: myData.name || "User", callerPfp: myData.photoURL || "", callerVerified: myData.verified || false,
-                receiver: targetUid, receiverName: name, receiverPfp: pfp, receiverVerified: isVerified || false,
-                status: 'ringing', timestamp: Date.now() 
-            });
-            
-            await rdb.ref(`signaling/${targetUid}`).set({ 
-                from: myUid, callId: currentCallId, name: myData.name || "User", pfp: myData.photoURL || "", verified: myData.verified || false, timestamp: Date.now() 
-            });
 
-            rdb.ref(`calls/${currentCallId}`).on('value', snap => {
-                const data = snap.val();
-                if (!data) return;
-                if (data.status === 'declined' || data.status === 'ended') { 
-                    callEndedByRemote = true;
-                    hangUp(); 
-                }
-                if (data.answer && !pc.currentRemoteDescription) {
-                    document.getElementById('dialtone').pause();
-                    pc.setRemoteDescription(new RTCSessionDescription(data.answer));
-                    startTimer();
-                    updateCallStatus("CONNECTED", "#1ebea5");
-                    document.getElementById('ring-animation').style.display = 'none';
-                }
-            });
-        } catch (e) { alert("Enable camera/mic to call"); hangUp(); }
+        localStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
+        document.getElementById('local-video').srcObject = localStream;
+
+        setupPeerConnection(targetUid);
+
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+
+        await rdb.ref(`calls/${currentCallId}`).set({
+            offer: { sdp: offer.sdp, type: offer.type },
+            caller: myUid,
+            callerName: myData.name || "User",
+            callerPfp: myData.photoURL || "",
+            receiver: targetUid,
+            receiverName: name,
+            receiverPfp: pfp,
+            status: 'ringing'
+        });
+
+        rdb.ref(`signaling/${targetUid}`).set({
+            from: myUid,
+            callId: currentCallId,
+            name: myData.name || "User",
+            pfp: myData.photoURL || ""
+        });
+
+        rdb.ref(`calls/${currentCallId}`).on('value', snap => {
+            const data = snap.val();
+            if (!data) return;
+            if (data.status === 'declined') {
+                logCall('declined');
+                document.getElementById('dialtone').pause();
+                updateCallStatus("DECLINED", "var(--danger)");
+                setTimeout(hangUp, 2000);
+            }
+            if (data.answer && !pc.currentRemoteDescription) {
+                document.getElementById('dialtone').pause();
+                pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+                startTimer();
+                updateCallStatus("CONNECTED", "var(--success)");
+            }
+        });
     }
 
     function listenForPings() {
@@ -385,22 +300,18 @@
             const data = snap.val();
             if(data && !currentCallId) {
                 isCaller = false;
-                secondsElapsed = 0;
                 currentCallId = data.callId;
-                currentActiveTarget = { uid: data.from, name: data.name, pfp: data.pfp, verified: data.verified };
-                
-                showCallUI(data.name, data.pfp, "INCOMING CALL...", data.verified);
-                
+                currentActiveTarget = { uid: data.from, name: data.name, pfp: data.pfp };
+                showCallUI(data.name, data.pfp, "INCOMING CALL...");
                 document.getElementById('answer-btn').style.display = 'flex';
-                document.getElementById('hangup-btn').style.transform = 'rotate(135deg)';
                 document.getElementById('ringtone').play().catch(() => {});
                 
-                rdb.ref(`calls/${currentCallId}`).on('value', s => { 
-                    const val = s.val();
-                    if (val && (val.status === 'cancelled' || val.status === 'ended')) { 
-                        callEndedByRemote = true;
-                        hangUp(); 
-                    } 
+                rdb.ref(`calls/${currentCallId}/status`).on('value', s => {
+                    if (s.val() === 'cancelled') {
+                        logCall('missed');
+                        updateCallStatus("CALL CANCELLED", "var(--danger)");
+                        setTimeout(hangUp, 1500);
+                    }
                 });
             }
         });
@@ -408,39 +319,47 @@
 
     async function answerCall() {
         document.getElementById('ringtone').pause();
+        document.getElementById('ringtone').currentTime = 0;
         document.getElementById('answer-btn').style.display = 'none';
-        document.getElementById('hangup-btn').style.transform = 'none';
         updateCallStatus("CONNECTING...", "var(--accent)");
+
         const snap = await rdb.ref(`calls/${currentCallId}`).get();
         const callData = snap.val();
-        try {
-            localStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
-            document.getElementById('local-video').srcObject = localStream;
-            localStream.getVideoTracks()[0].enabled = false;
-            setupPeerConnection(callData.caller);
-            await pc.setRemoteDescription(new RTCSessionDescription(callData.offer));
-            const answer = await pc.createAnswer();
-            await pc.setLocalDescription(answer);
-            await rdb.ref(`calls/${currentCallId}`).update({ answer: { sdp: answer.sdp, type: answer.type }, status: 'connected' });
-            rdb.ref(`signaling/${myUid}`).remove();
-            startTimer();
-            updateCallStatus("CONNECTED", "#1ebea5");
-            document.getElementById('ring-animation').style.display = 'none';
-        } catch (e) { hangUp(); }
+        if(!callData) return;
+
+        localStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
+        document.getElementById('local-video').srcObject = localStream;
+
+        setupPeerConnection(callData.caller);
+
+        await pc.setRemoteDescription(new RTCSessionDescription(callData.offer));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+
+        await rdb.ref(`calls/${currentCallId}`).update({ 
+            answer: { sdp: answer.sdp, type: answer.type },
+            status: 'connected' 
+        });
+
+        rdb.ref(`signaling/${myUid}`).remove();
+        startTimer();
     }
 
     function setupPeerConnection(targetUid) {
         pc = new RTCPeerConnection(servers);
         localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
         pc.onicecandidate = e => { if(e.candidate) rdb.ref(`calls/${currentCallId}/candidates/${myUid}`).push(e.candidate.toJSON()); };
-        pc.ontrack = e => { document.getElementById('remote-video').srcObject = e.streams[0]; };
-        rdb.ref(`calls/${currentCallId}/candidates/${targetUid}`).on('child_added', snap => { pc.addIceCandidate(new RTCIceCandidate(snap.val())).catch(() => {}); });
+        pc.ontrack = e => { 
+            document.getElementById('remote-video').srcObject = e.streams[0];
+            document.getElementById('id-card').style.display = 'none';
+        };
+        rdb.ref(`calls/${currentCallId}/candidates/${targetUid}`).on('child_added', snap => {
+            pc.addIceCandidate(new RTCIceCandidate(snap.val())).catch(() => {});
+        });
     }
 
     function startTimer() {
-        secondsElapsed = 0;
         document.getElementById('call-timer').style.display = 'block';
-        if(timerInterval) clearInterval(timerInterval);
         timerInterval = setInterval(() => {
             secondsElapsed++;
             const mins = String(Math.floor(secondsElapsed / 60)).padStart(2, '0');
@@ -451,12 +370,13 @@
 
     function updateCallStatus(text, color) {
         const el = document.getElementById('call-status');
-        el.innerText = text; el.style.color = color;
+        el.innerText = text;
+        el.style.color = color;
     }
 
     async function logCall(finalStatus) {
         if(!currentActiveTarget) return;
-        const dur = document.getElementById('call-timer').innerText;
+        const duration = document.getElementById('call-timer').innerText;
         await db.collection("call_logs").add({
             participants: [myUid, currentActiveTarget.uid],
             callerId: isCaller ? myUid : currentActiveTarget.uid,
@@ -466,62 +386,51 @@
             receiverName: isCaller ? currentActiveTarget.name : (myData.name || "User"),
             receiverPfp: isCaller ? currentActiveTarget.pfp : (myData.photoURL || ""),
             status: finalStatus,
-            duration: secondsElapsed > 0 ? dur : "0s",
+            duration: secondsElapsed > 0 ? duration : "0s",
             timestamp: Date.now()
         });
     }
 
-    async function hangUp() {
+    function hangUp() {
         document.getElementById('ringtone').pause();
         document.getElementById('dialtone').pause();
         
-        if (currentCallId && !callEndedByRemote) {
-            let status = 'cancelled';
-            if (secondsElapsed > 0) {
-                status = 'ended';
-            } else if (!isCaller) {
-                status = 'declined';
-            }
+        if (currentCallId) {
+            const status = secondsElapsed > 0 ? 'completed' : (isCaller ? 'cancelled' : 'declined');
+            if (status !== 'declined' && status !== 'missed') logCall(status); 
             
-            await rdb.ref(`calls/${currentCallId}/status`).set(status);
-            const finalLogStatus = (secondsElapsed > 0) ? 'completed' : (isCaller ? 'cancelled' : 'declined');
-            await logCall(finalLogStatus);
-        } else if (currentCallId && callEndedByRemote) {
-            const finalLogStatus = (secondsElapsed > 0) ? 'completed' : (isCaller ? 'cancelled' : 'missed');
-            await logCall(finalLogStatus);
+            updateCallStatus("CALL ENDED", "var(--danger)");
+            rdb.ref(`calls/${currentCallId}/status`).set(isCaller ? 'cancelled' : 'declined');
         }
-
+        
         clearInterval(timerInterval);
-        if(localStream) localStream.getTracks().forEach(t => t.stop());
-        if(pc) pc.close();
-        rdb.ref(`signaling/${myUid}`).remove();
-        setTimeout(() => window.location.reload(), 300);
+        setTimeout(() => {
+            if(localStream) localStream.getTracks().forEach(t => t.stop());
+            if(pc) pc.close();
+            rdb.ref(`signaling/${myUid}`).remove();
+            if(currentCallId) rdb.ref(`calls/${currentCallId}`).remove();
+            window.location.reload();
+        }, 1200);
     }
 
-    function showCallUI(name, pfp, status, verified) {
+    function showCallUI(name, pfp, status) {
         document.getElementById('call-screen').style.display = 'flex';
-        const badge = (verified === true) ? `<span class="v-badge"></span>` : "";
-        document.getElementById('target-name').innerHTML = `${name} ${badge}`;
+        document.getElementById('target-name').innerText = name;
         document.getElementById('target-pfp').src = pfp || 'https://via.placeholder.com/150';
-        updateCallStatus(status, "var(--accent)");
+        document.getElementById('call-status').innerText = status;
+        document.getElementById('call-status').style.color = "var(--accent)";
     }
 
     function toggleMic() {
-        if(!localStream) return;
         const t = localStream.getAudioTracks()[0];
         t.enabled = !t.enabled;
-        document.getElementById('mic-btn').classList.toggle('btn-off', !t.enabled);
+        document.getElementById('mic-btn').style.opacity = t.enabled ? "1" : "0.3";
     }
 
     function toggleCam() {
-        if(!localStream) return;
-        isCamOn = !isCamOn;
         const t = localStream.getVideoTracks()[0];
-        t.enabled = isCamOn;
-        document.getElementById('cam-btn').classList.toggle('btn-off', !isCamOn);
-        document.getElementById('remote-video').style.display = isCamOn ? 'block' : 'none';
-        document.getElementById('local-video').style.display = isCamOn ? 'block' : 'none';
-        document.getElementById('pfp-area').style.display = isCamOn ? 'none' : 'flex';
+        t.enabled = !t.enabled;
+        document.getElementById('cam-btn').style.opacity = t.enabled ? "1" : "0.3";
     }
 </script>
 </body>
