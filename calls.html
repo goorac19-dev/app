@@ -491,18 +491,36 @@
 
     function setupPeerConnection(targetUid) {
         pc = new RTCPeerConnection(servers);
-        localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
         
+        // Error handling for ICE candidates
         pc.onicecandidate = e => { 
-            if(e.candidate) rdb.ref(`calls/${currentCallId}/candidates/${myUid}`).push(e.candidate.toJSON()); 
+            if(e.candidate && currentCallId) {
+                rdb.ref(`calls/${currentCallId}/candidates/${myUid}`).push(e.candidate.toJSON()); 
+            }
         };
         
+        // Track connection stability
+        pc.onconnectionstatechange = () => {
+            if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
+                hangUp();
+            }
+        };
+
+        if(localStream) {
+            localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+        }
+        
         pc.ontrack = e => { 
-            document.getElementById('remote-video').srcObject = e.streams[0]; 
+            const remoteVid = document.getElementById('remote-video');
+            if (remoteVid.srcObject !== e.streams[0]) {
+                remoteVid.srcObject = e.streams[0]; 
+            }
         };
         
         rdb.ref(`calls/${currentCallId}/candidates/${targetUid}`).on('child_added', snap => { 
-            pc.addIceCandidate(new RTCIceCandidate(snap.val())).catch(() => {}); 
+            if(pc && pc.remoteDescription) {
+                pc.addIceCandidate(new RTCIceCandidate(snap.val())).catch(() => {}); 
+            }
         });
     }
 
@@ -520,7 +538,7 @@
 
     function updateCallStatus(text, color) {
         const el = document.getElementById('call-status');
-        el.innerText = text; el.style.color = color;
+        if(el) { el.innerText = text; el.style.color = color; }
     }
 
     async function logCall(finalStatus) {
@@ -528,18 +546,20 @@
         const dur = document.getElementById('call-timer').innerText;
         const uniqueLogId = currentCallId + "_" + Math.floor(Date.now() / 10000);
 
-        await db.collection("call_logs").doc(uniqueLogId).set({
-            participants: [myUid, currentActiveTarget.uid],
-            callerId: isCaller ? myUid : currentActiveTarget.uid,
-            callerName: isCaller ? (myData.name || "User") : currentActiveTarget.name,
-            callerPfp: isCaller ? (myData.photoURL || "") : currentActiveTarget.pfp,
-            receiverId: isCaller ? currentActiveTarget.uid : myUid,
-            receiverName: isCaller ? currentActiveTarget.name : (myData.name || "User"),
-            receiverPfp: isCaller ? currentActiveTarget.pfp : (myData.photoURL || ""),
-            status: finalStatus,
-            duration: secondsElapsed > 0 ? dur : "0s",
-            timestamp: Date.now()
-        }, { merge: true });
+        try {
+            await db.collection("call_logs").doc(uniqueLogId).set({
+                participants: [myUid, currentActiveTarget.uid],
+                callerId: isCaller ? myUid : currentActiveTarget.uid,
+                callerName: isCaller ? (myData.name || "User") : currentActiveTarget.name,
+                callerPfp: isCaller ? (myData.photoURL || "") : currentActiveTarget.pfp,
+                receiverId: isCaller ? currentActiveTarget.uid : myUid,
+                receiverName: isCaller ? currentActiveTarget.name : (myData.name || "User"),
+                receiverPfp: isCaller ? currentActiveTarget.pfp : (myData.photoURL || ""),
+                status: finalStatus,
+                duration: secondsElapsed > 0 ? dur : "0s",
+                timestamp: Date.now()
+            }, { merge: true });
+        } catch(e) { console.error("Log failed", e); }
     }
 
     async function hangUp() {
@@ -564,7 +584,12 @@
 
         clearInterval(timerInterval);
         if(localStream) localStream.getTracks().forEach(t => t.stop());
-        if(pc) pc.close();
+        if(pc) {
+            pc.ontrack = null;
+            pc.onicecandidate = null;
+            pc.close();
+            pc = null;
+        }
         rdb.ref(`signaling/${myUid}`).remove();
         setTimeout(() => window.location.reload(), 300);
     }
