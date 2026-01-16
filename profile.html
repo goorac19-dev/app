@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Goorac | Profile</title>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -10,6 +10,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
     <script src="components/navbar.js" defer></script>
+    <script src="components/call-notifier.js" defer></script>
 
     <style>
         :root {
@@ -18,6 +19,15 @@
             --accent: #00d2ff;
             --glass: rgba(255, 255, 255, 0.03);
             --border: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Security: Avoid Copy & Selection */
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
 
         body {
@@ -65,10 +75,12 @@
             background: radial-gradient(circle at top, rgba(0, 210, 255, 0.05) 0%, transparent 70%);
         }
 
+        /* PFP Zoom Effect */
         .pfp-container {
             width: 110px;
             height: 110px;
             margin: 0 auto 20px;
+            overflow: visible;
         }
 
         .pfp-main {
@@ -77,6 +89,14 @@
             border-radius: 38px;
             object-fit: cover;
             border: 2px solid var(--border);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer;
+        }
+
+        .pfp-main:active {
+            transform: scale(1.5);
+            z-index: 1000;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
 
         .name-container {
@@ -103,7 +123,11 @@
             display: inline-block;
             margin-bottom: 25px;
             min-width: 120px;
+            cursor: pointer;
+            transition: opacity 0.2s;
         }
+
+        .goorac-id-tag:active { opacity: 0.6; }
 
         .stats-grid {
             display: grid;
@@ -150,9 +174,26 @@
 
         .btn-edit { background: #fff; color: #000; }
         .btn-logout { background: #1a1a1a; color: #ff4b4b; border: 1px solid rgba(255, 75, 75, 0.1); }
+
+        /* Toast Styles */
+        #toast {
+            position: fixed;
+            bottom: 110px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #fff;
+            color: #000;
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-weight: 800;
+            font-size: 0.8rem;
+            display: none;
+            z-index: 1000;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
     </style>
 </head>
-<body>
+<body oncontextmenu="return false;">
 
 <header>
     <div class="header-username skeleton" id="header-user">@username</div>
@@ -169,7 +210,9 @@
         <img id="v-badge" src="https://upload.wikimedia.org/wikipedia/commons/e/e4/Twitter_Verified_Badge.svg" class="verify-badge">
     </div>
     
-    <div class="goorac-id-tag skeleton" id="id-tag-wrap">GOORAC ID: <span id="user-id-num">00000000</span></div>
+    <div class="goorac-id-tag skeleton" id="id-tag-wrap" onclick="copyGooracID()">
+        GOORAC ID: <span id="user-id-num">00000000</span>
+    </div>
 </div>
 
 <div class="stats-grid">
@@ -193,6 +236,8 @@
     <button id="logoutBtn" class="btn btn-logout">Logout</button>
 </div>
 
+<div id="toast">Copied to Clipboard</div>
+
 <main-navbar></main-navbar>
 
 <script>
@@ -215,40 +260,31 @@
                 const doc = await db.collection("users").doc(user.uid).get();
                 if (doc.exists) {
                     const data = doc.data();
-                    
-                    // Helper to remove skeleton class
                     const removeSkeleton = (id) => document.getElementById(id).classList.remove('skeleton');
 
-                    // Populate UI & Remove Skeletons
+                    // Populate UI
                     const pfp = document.getElementById('pfp-img');
                     pfp.src = data.photoURL || 'https://via.placeholder.com/150';
                     pfp.onload = () => pfp.classList.remove('skeleton');
 
-                    const fullName = document.getElementById('user-full-name');
-                    fullName.innerText = data.name || "User";
+                    document.getElementById('user-full-name').innerText = data.name || "User";
                     removeSkeleton('user-full-name');
 
-                    const headerUser = document.getElementById('header-user');
-                    headerUser.innerText = "@" + (data.username || "user");
+                    document.getElementById('header-user').innerText = "@" + (data.username || "user");
                     removeSkeleton('header-user');
 
                     document.getElementById('user-id-num').innerText = data.gooracNumber || "----------";
                     removeSkeleton('id-tag-wrap');
 
-                    const bio = document.getElementById('bio-text');
-                    bio.innerText = data.bio || "Welcome to my Goorac profile.";
+                    document.getElementById('bio-text').innerText = data.bio || "Welcome to my Goorac profile.";
                     removeSkeleton('bio-text');
                     
-                    // Stats
-                    const followers = document.getElementById('stat-followers');
-                    followers.innerText = data.followerCount || 0;
+                    document.getElementById('stat-followers').innerText = data.followerCount || 0;
                     removeSkeleton('stat-followers');
 
-                    const following = document.getElementById('stat-following');
-                    following.innerText = data.followingCount || 0;
+                    document.getElementById('stat-following').innerText = data.followingCount || 0;
                     removeSkeleton('stat-following');
 
-                    // Verification
                     if (data.verified === true) {
                         document.getElementById('v-badge').style.display = 'inline';
                     }
@@ -263,6 +299,18 @@
             window.location.href = "login.html";
         }
     });
+
+    // Copy Function
+    function copyGooracID() {
+        const id = document.getElementById('user-id-num').innerText;
+        if (id === "----------" || id === "00000000") return;
+        
+        navigator.clipboard.writeText(id).then(() => {
+            const toast = document.getElementById('toast');
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 2000);
+        });
+    }
 
     document.getElementById('logoutBtn').onclick = () => {
         auth.signOut().then(() => {
