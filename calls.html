@@ -53,7 +53,6 @@
             -webkit-overflow-scrolling: touch; 
         }
 
-        /* Skeleton Loading Animation */
         .skeleton {
             background: linear-gradient(90deg, #111 25%, #222 50%, #111 75%);
             background-size: 200% 100%;
@@ -132,7 +131,6 @@
         .btn-end { width: 65px; height: 65px; background: var(--danger) !important; }
         .btn-accept { width: 65px; height: 65px; background: var(--success) !important; }
         .btn-off { background: rgba(255,255,255,0.5); color: black; }
-
     </style>
 </head>
 <body oncontextmenu="return false;">
@@ -180,10 +178,60 @@
         </div>
     </div>
 
+    <call-notifier></call-notifier>
+
     <script src="components/navbar.js" defer></script> 
     <main-navbar></main-navbar>
 
     <script>
+        // Define Custom Element for Notifier
+        class CallNotifier extends HTMLElement {
+            constructor() { super(); }
+            connectedCallback() {
+                this.innerHTML = `
+                <style>
+                    #notif-banner {
+                        position: fixed; top: -150px; left: 50%; transform: translateX(-50%);
+                        width: calc(100% - 30px); max-width: 400px;
+                        background: rgba(10, 15, 20, 0.98); backdrop-filter: blur(20px);
+                        border: 1px solid rgba(0, 210, 255, 0.4); border-radius: 24px;
+                        padding: 12px 16px; display: flex; align-items: center; justify-content: space-between;
+                        z-index: 100000; box-shadow: 0 15px 40px rgba(0,0,0,0.8);
+                        transition: top 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+                    }
+                    #notif-banner.active { top: 20px; }
+                    .nb-info { display: flex; align-items: center; gap: 12px; color: white; }
+                    .nb-pfp { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; }
+                    .nb-text h4 { margin: 0; font-size: 0.95rem; }
+                    .nb-text p { margin: 0; font-size: 0.75rem; color: var(--accent); }
+                    .nb-actions { display: flex; gap: 10px; }
+                    .nb-btn { border: none; padding: 10px 18px; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 0.8rem; }
+                    .nb-acc { background: var(--accent); color: black; }
+                    .nb-dec { background: rgba(255,68,68,0.2); color: #ff4444; }
+                </style>
+                <div id="notif-banner">
+                    <div class="nb-info">
+                        <img id="nb-img" class="nb-pfp" src="">
+                        <div class="nb-text"><h4 id="nb-user">User</h4><p>Incoming Call...</p></div>
+                    </div>
+                    <div class="nb-actions">
+                        <button class="nb-btn nb-dec" id="nb-decline">Decline</button>
+                        <button class="nb-btn nb-acc" id="nb-answer">Answer</button>
+                    </div>
+                </div>`;
+            }
+            show(name, pfp, onAccept, onDecline) {
+                const b = this.querySelector('#notif-banner');
+                this.querySelector('#nb-user').innerText = name;
+                this.querySelector('#nb-img').src = pfp || 'https://via.placeholder.com/150';
+                b.classList.add('active');
+                this.querySelector('#nb-answer').onclick = () => { b.classList.remove('active'); onAccept(); };
+                this.querySelector('#nb-decline').onclick = () => { b.classList.remove('active'); onDecline(); };
+            }
+            hide() { this.querySelector('#notif-banner').classList.remove('active'); }
+        }
+        customElements.define('call-notifier', CallNotifier);
+
         document.addEventListener('keydown', function(e) {
             if (e.ctrlKey && (e.key === 'c' || e.key === 'v' || e.key === 'u' || e.key === 's' || e.key === 'a' || e.key === 'p')) {
                 e.preventDefault();
@@ -224,8 +272,33 @@
                 myData = doc.data() || {};
                 loadData();
                 listenForPings();
+                checkAutoAnswer();
             } else { window.location.href = 'login.html'; }
         });
+
+        async function checkAutoAnswer() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const callId = urlParams.get('callId');
+            const shouldAnswer = urlParams.get('answer');
+
+            if (callId && shouldAnswer === 'true') {
+                try {
+                    const snap = await rdb.ref(`calls/${callId}`).get();
+                    const callData = snap.val();
+                    if (!callData || ['ended', 'declined', 'cancelled'].includes(callData.status)) return;
+
+                    isCaller = false;
+                    currentCallId = callId;
+                    
+                    const uDoc = await db.collection("users").doc(callData.callerId).get();
+                    const uData = uDoc.data() || {};
+                    currentActiveTarget = { uid: callData.callerId, name: uData.name, pfp: uData.photoURL };
+                    
+                    showCallUI(uData.name, uData.photoURL, "CONNECTING...", uData.verified);
+                    answerCall();
+                } catch (e) { console.error("Auto-answer failed", e); }
+            }
+        }
 
         document.getElementById('search').addEventListener('input', (e) => {
             const query = e.target.value.toLowerCase();
@@ -291,7 +364,7 @@
                 const snapshot = await db.collection("call_logs")
                     .where('participants', 'array-contains', myUid)
                     .orderBy('timestamp', 'desc')
-                    .limit(15)
+                    .limit(10) 
                     .get();
                     
                 if (snapshot.empty) {
@@ -359,8 +432,6 @@
             renderFilteredList();
         }
 
-        // --- CORE CALLING LOGIC ---
-
         async function startCall(targetUid, name, pfp, isVerified) {
             if (currentCallId) return;
             isCaller = true;
@@ -387,7 +458,9 @@
                 };
 
                 pc.ontrack = (event) => {
-                    document.getElementById('remote-video').srcObject = event.streams[0];
+                    const rv = document.getElementById('remote-video');
+                    rv.srcObject = event.streams[0];
+                    rv.style.display = 'block';
                 };
 
                 const offer = await pc.createOffer();
@@ -433,26 +506,37 @@
         function listenForPings() {
             rdb.ref(`signaling/${myUid}`).on('value', snap => {
                 const data = snap.val();
-                if (data && !currentCallId) {
+                const urlParams = new URLSearchParams(window.location.search);
+                if (data && !currentCallId && urlParams.get('callId') !== data.callId) {
                     if (Date.now() - data.timestamp > 30000) {
                         rdb.ref(`signaling/${myUid}`).remove();
                         return;
                     }
-                    isCaller = false;
-                    secondsElapsed = 0;
-                    isLoggingInProgress = false;
-                    currentCallId = data.callId;
-                    currentActiveTarget = { uid: data.from, name: data.name, pfp: data.pfp };
                     
-                    showCallUI(data.name, data.pfp, "INCOMING CALL...", false);
-                    document.getElementById('answer-btn').style.display = 'flex';
-                    document.getElementById('hangup-btn').style.transform = 'rotate(135deg)';
+                    const notifier = document.querySelector('call-notifier');
+                    notifier.show(data.name, data.pfp, 
+                        () => { 
+                            isCaller = false;
+                            secondsElapsed = 0;
+                            isLoggingInProgress = false;
+                            currentCallId = data.callId;
+                            currentActiveTarget = { uid: data.from, name: data.name, pfp: data.pfp };
+                            showCallUI(data.name, data.pfp, "INCOMING CALL...", false);
+                            answerCall(); 
+                        },
+                        () => { 
+                            rdb.ref(`calls/${data.callId}`).update({ status: 'declined' });
+                            rdb.ref(`signaling/${myUid}`).remove();
+                        }
+                    );
+
                     document.getElementById('ringtone').play().catch(() => {});
 
-                    rdb.ref(`calls/${currentCallId}`).on('value', s => {
+                    rdb.ref(`calls/${data.callId}`).on('value', s => {
                         const val = s.val();
-                        if (val?.status === 'cancelled' || val?.status === 'ended') {
-                            handleHangUpEffectively(false);
+                        if (val?.status === 'cancelled' || val?.status === 'ended' || val?.status === 'connected') {
+                            notifier.hide();
+                            if (val?.status !== 'connected') handleHangUpEffectively(false);
                         }
                     });
                 }
@@ -478,7 +562,9 @@
 
                 pc.onicecandidate = (e) => e.candidate && rdb.ref(`calls/${currentCallId}/candidates/${myUid}`).push(e.candidate.toJSON());
                 pc.ontrack = (e) => {
-                    document.getElementById('remote-video').srcObject = e.streams[0];
+                    const rv = document.getElementById('remote-video');
+                    rv.srcObject = e.streams[0];
+                    rv.style.display = 'block';
                 };
 
                 await pc.setRemoteDescription(new RTCSessionDescription(callData.offer));
@@ -503,7 +589,7 @@
         }
 
         async function hangUp() {
-            handleHangUpEffectively(true);
+            await handleHangUpEffectively(true);
         }
 
         async function handleHangUpEffectively(shouldNotifyRemote) {
@@ -511,36 +597,49 @@
             document.getElementById('dialtone').pause();
             
             if (currentCallId) {
+                // Determine the status before clearing data
                 let finalStatus = (secondsElapsed > 0) ? 'completed' : (isCaller ? 'cancelled' : 'declined');
                 
+                // 1. Notify remote peer and update RDB status
                 if (shouldNotifyRemote) {
                     let rdbStatus = (secondsElapsed > 0) ? 'ended' : (isCaller ? 'cancelled' : 'declined');
                     await rdb.ref(`calls/${currentCallId}`).update({ status: rdbStatus });
                 }
 
-                if (isCaller && !isLoggingInProgress) {
+                // 2. Log the call to Firestore (only once)
+                if (!isLoggingInProgress) {
                     isLoggingInProgress = true;
                     await logCall(finalStatus);
                 }
             }
 
-            if (timerInterval) {
-                clearInterval(timerInterval);
-                timerInterval = null;
+            // 3. Clear local media and connections
+            if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+            if (localStream) localStream.getTracks().forEach(t => t.stop());
+            if (pc) {
+                pc.ontrack = null;
+                pc.onicecandidate = null;
+                pc.close();
+                pc = null;
             }
             
-            if (localStream) localStream.getTracks().forEach(t => t.stop());
-            if (pc) pc.close();
-            
-            rdb.ref(`signaling/${myUid}`).remove();
+            // 4. Cleanup and UI reset
+            await rdb.ref(`signaling/${myUid}`).remove();
             document.getElementById('call-screen').style.display = 'none';
             
             currentCallId = null;
-            setTimeout(() => window.location.reload(), 500);
+            
+            const url = new URL(window.location);
+            url.searchParams.delete('callId');
+            url.searchParams.delete('answer');
+            window.history.replaceState({}, document.title, url.toString());
+            
+            // Refresh to clear state
+            setTimeout(() => window.location.reload(), 800);
         }
 
         function startTimer() {
-            if (timerInterval) clearInterval(timerInterval); // Prevent double timers
+            if (timerInterval) clearInterval(timerInterval); 
             secondsElapsed = 0;
             const timerEl = document.getElementById('call-timer');
             timerEl.style.display = 'block';
@@ -555,7 +654,7 @@
         }
 
         async function logCall(finalStatus) {
-            if(!currentActiveTarget) return;
+            if(!currentActiveTarget || !myUid) return;
             
             let durationStr = "0s";
             if (secondsElapsed > 0) {
@@ -565,18 +664,24 @@
             }
 
             try {
-                await db.collection("call_logs").add({
-                    participants: [myUid, currentActiveTarget.uid],
-                    callerId: isCaller ? myUid : currentActiveTarget.uid,
-                    receiverId: isCaller ? currentActiveTarget.uid : myUid,
+                // Participants array must contain strings
+                const logData = {
+                    participants: [String(myUid), String(currentActiveTarget.uid)],
+                    callerId: isCaller ? String(myUid) : String(currentActiveTarget.uid),
+                    receiverId: isCaller ? String(currentActiveTarget.uid) : String(myUid),
                     callerName: isCaller ? (myData.name || "User") : currentActiveTarget.name,
                     receiverName: isCaller ? currentActiveTarget.name : (myData.name || "User"),
+                    callerPfp: isCaller ? (myData.photoURL || "") : (currentActiveTarget.pfp || ""),
+                    receiverPfp: isCaller ? (currentActiveTarget.pfp || "") : (myData.photoURL || ""),
                     status: finalStatus,
                     duration: durationStr,
                     timestamp: Date.now()
-                });
-            } catch (e) {
-                console.error("Log error:", e);
+                };
+                
+                await db.collection("call_logs").add(logData);
+                console.log("Call logged successfully");
+            } catch (e) { 
+                console.error("Firestore logging failed:", e); 
             }
         }
 
