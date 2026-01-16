@@ -1,8 +1,9 @@
 // components/call-notifier.js
 class CallNotifier extends HTMLElement {
     async connectedCallback() {
-        if (window.location.pathname.includes('calls.html')) {
-            // Check if call is actually active to avoid hiding on list view
+        // Fix: Improved path check to handle GitHub Pages subfolders
+        const currentPath = window.location.pathname;
+        if (currentPath.endsWith('calls.html')) {
             if (new URLSearchParams(window.location.search).has('callId')) {
                 this.remove();
                 return;
@@ -13,10 +14,9 @@ class CallNotifier extends HTMLElement {
         this.render();
         this.init();
         this.initSwipe();
-        this.unlockAudio(); // Critical for Mobile Chrome
+        this.unlockAudio(); 
     }
 
-    // Unlocks audio for mobile browsers on the first tap
     unlockAudio() {
         const unlock = () => {
             const tone = this.querySelector('#n-tone');
@@ -71,7 +71,7 @@ class CallNotifier extends HTMLElement {
                 display: flex; 
                 align-items: center; 
                 justify-content: space-between;
-                z-index: 2147483647; /* Maximum possible z-index */
+                z-index: 2147483647;
                 box-shadow: 0 20px 50px rgba(0,0,0,0.9);
                 transition: top 0.7s cubic-bezier(0.19, 1, 0.22, 1), transform 0.1s linear, opacity 0.3s;
                 font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -96,9 +96,6 @@ class CallNotifier extends HTMLElement {
             .n-btn { border: none; padding: 12px 20px; border-radius: 16px; font-size: 0.85rem; font-weight: 800; cursor: pointer; transition: 0.2s; }
             .n-dec { background: rgba(255, 68, 68, 0.2); color: #ff4444; }
             .n-ans { background: #1ebea5; color: #fff; box-shadow: 0 4px 15px rgba(30, 190, 165, 0.4); }
-            @media (max-width: 360px) {
-                .n-btn { padding: 10px 14px; font-size: 0.75rem; }
-            }
         </style>
         <div id="notif-banner">
             <div class="c-prof">
@@ -120,7 +117,8 @@ class CallNotifier extends HTMLElement {
 
     init() {
         const check = setInterval(() => {
-            if (window.firebase && firebase.auth().currentUser && firebase.database) {
+            // Fix: Check for both firebase object and initialized apps
+            if (typeof firebase !== 'undefined' && firebase.apps.length > 0 && firebase.auth().currentUser) {
                 clearInterval(check);
                 this.listen();
             }
@@ -138,7 +136,6 @@ class CallNotifier extends HTMLElement {
 
         banner.addEventListener('touchmove', (e) => {
             currentY = e.touches[0].clientY - startY;
-            // Swipe up to dismiss
             if (currentY < 0) {
                 banner.style.transform = `translateX(-50%) translateY(${currentY}px)`;
                 banner.style.opacity = 1 - Math.abs(currentY) / 150;
@@ -168,15 +165,14 @@ class CallNotifier extends HTMLElement {
                 return;
             }
 
-            // Expiry check (45 seconds)
             if (Date.now() - data.timestamp > 45000) {
                 this.signalRef.remove();
                 this.hide();
                 return;
             }
 
-            // Don't show if we are already on the active call page for this call
-            if (window.location.pathname.includes('calls.html')) {
+            // Fix: Smarter path check for subdirectories
+            if (window.location.pathname.endsWith('calls.html')) {
                 const params = new URLSearchParams(window.location.search);
                 if (params.get('callId') === data.callId) return;
             }
@@ -194,10 +190,14 @@ class CallNotifier extends HTMLElement {
                 e.preventDefault();
                 this.signalRef.off();
                 this.hide();
-                window.location.href = `calls.html?callId=${data.callId}&answer=true`;
+                
+                // Fix: Handle relative pathing for GitHub Pages subfolders
+                const url = new URL('calls.html', window.location.href);
+                url.searchParams.set('callId', data.callId);
+                url.searchParams.set('answer', 'true');
+                window.location.href = url.href;
             };
 
-            // Remote status listener
             firebase.database().ref(`calls/${data.callId}/status`).on('value', s => {
                 if (['cancelled', 'ended', 'connected'].includes(s.val())) {
                     this.hide();
@@ -221,12 +221,9 @@ class CallNotifier extends HTMLElement {
         banner.style.opacity = '1';
         banner.classList.add('active');
 
-        // Mobile Chrome requires careful play handling
         const playPromise = tone.play();
         if (playPromise !== undefined) {
-            playPromise.catch(() => {
-                console.log("Autoplay prevented. Waiting for user interaction to play sound.");
-            });
+            playPromise.catch(() => {});
         }
     }
 

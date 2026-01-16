@@ -227,19 +227,19 @@
                 b.classList.add('active');
                 this.querySelector('#nb-answer').onclick = () => { 
                     b.classList.remove('active'); 
-                    document.getElementById('ringtone').pause(); // Fix: Stop sound on answer
+                    document.getElementById('ringtone').pause();
                     onAccept(); 
                 };
                 this.querySelector('#nb-decline').onclick = () => { 
                     b.classList.remove('active'); 
-                    document.getElementById('ringtone').pause(); // Fix: Stop sound on decline
+                    document.getElementById('ringtone').pause();
                     onDecline(); 
                 };
             }
             hide() { 
                 const b = this.querySelector('#notif-banner');
                 if(b) b.classList.remove('active'); 
-                document.getElementById('ringtone').pause(); // Fix: Stop sound on remote hide
+                document.getElementById('ringtone').pause();
             }
         }
         customElements.define('call-notifier', CallNotifier);
@@ -518,7 +518,7 @@
         function listenForPings() {
             rdb.ref(`signaling/${myUid}`).on('value', snap => {
                 const data = snap.val();
-                if (!data) return; // Fix: Only proceed if data exists
+                if (!data) return;
 
                 const urlParams = new URLSearchParams(window.location.search);
                 if (!currentCallId && urlParams.get('callId') !== data.callId) {
@@ -539,7 +539,6 @@
                             answerCall(); 
                         },
                         () => { 
-                            // Fix: Explicitly remove signaling on decline
                             rdb.ref(`calls/${data.callId}`).update({ status: 'declined' });
                             rdb.ref(`signaling/${myUid}`).remove();
                             document.getElementById('ringtone').pause();
@@ -550,9 +549,12 @@
 
                     rdb.ref(`calls/${data.callId}`).on('value', s => {
                         const val = s.val();
-                        if (val?.status === 'cancelled' || val?.status === 'ended' || val?.status === 'connected') {
+                        // Fix: Receiver now correctly hangs up when status changes to 'ended', 'cancelled', or 'declined'
+                        if (val?.status === 'cancelled' || val?.status === 'ended' || val?.status === 'declined') {
                             notifier.hide();
-                            if (val?.status !== 'connected') handleHangUpEffectively(false);
+                            handleHangUpEffectively(false);
+                        } else if (val?.status === 'connected') {
+                            notifier.hide();
                         }
                     });
                 }
@@ -601,6 +603,14 @@
                 updateCallStatus("CONNECTED", "#1ebea5");
                 document.getElementById('ring-animation').style.display = 'none';
 
+                // Monitor call status for hang-up
+                rdb.ref(`calls/${currentCallId}`).on('value', snap => {
+                    const data = snap.val();
+                    if (data && (data.status === 'ended' || data.status === 'cancelled' || data.status === 'declined')) {
+                        handleHangUpEffectively(false);
+                    }
+                });
+
             } catch (e) { hangUp(); }
         }
 
@@ -620,7 +630,6 @@
                     await rdb.ref(`calls/${currentCallId}`).update({ status: rdbStatus });
                 }
 
-                // FIX: Only the caller saves to call_logs to prevent duplicate documents
                 if (isCaller && !isLoggingInProgress) {
                     isLoggingInProgress = true;
                     await logCall(finalStatus);
@@ -636,7 +645,6 @@
                 pc = null;
             }
             
-            // Fix: Consistency in removing signaling node
             await rdb.ref(`signaling/${myUid}`).remove();
             if(currentActiveTarget) await rdb.ref(`signaling/${currentActiveTarget.uid}`).remove();
 
