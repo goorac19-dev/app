@@ -106,14 +106,6 @@
             padding: 16px; border-radius: 14px; font-weight: 600; cursor: pointer;
         }
 
-        nav {
-            position: fixed; bottom: 0; width: 100%; background: #000;
-            display: flex; justify-content: space-around; align-items: center;
-            padding: 15px 0 calc(15px + env(safe-area-inset-bottom)); 
-            border-top: 1px solid var(--border); z-index: 2000;
-        }
-        .nav-icon { font-size: 1.5rem; color: #555; text-decoration: none; transition: 0.2s; }
-        .nav-icon.active { color: var(--accent); }
 
         #search-results { display: none; background: #000; min-height: 100vh; }
     </style>
@@ -143,13 +135,14 @@
     <button class="del-btn-big" id="confirm-delete">Delete For Both</button>
     <button class="cancel-btn" onclick="closeDeleteMenu()">Cancel</button>
 </div>
+<script src="components/navbar.js" defer></script>
+<main-navbar></main-navbar>
 
-<nav>
-    <a href="home.html" class="nav-icon">🏠</a>
-    <a href="messages.html" class="nav-icon active">💬</a>
-    <a href="add-contact.html" class="nav-icon">🔍</a>
-    <a href="profile.html" class="nav-icon">👤</a>
-</nav>
+
+
+<script src="components/call-notifier.js" defer></script>
+<call-notifier></call-notifier>
+
 
 <script>
     const firebaseConfig = {

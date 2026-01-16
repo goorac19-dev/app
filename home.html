@@ -10,32 +10,35 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
 
+    <script src="components/navbar.js" defer></script>
+
     <style>
         :root {
             --bg: #000;
             --accent: #00d2ff;
             --card-grad: linear-gradient(145deg, #111 0%, #050505 100%);
             --border: rgba(255, 255, 255, 0.08);
-            --nav-bg: rgba(15, 15, 15, 0.8);
+            --text-main: #ffffff;
+            --text-dim: #a0a0a0;
         }
 
         body {
             background-color: var(--bg);
-            color: white;
+            color: var(--text-main);
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             margin: 0;
-            padding-bottom: 80px;
+            padding-bottom: 100px;
             overflow-x: hidden;
         }
 
-        /* --- Slim Professional Header --- */
+        /* --- Persistent Header --- */
         header {
             padding: 12px 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             backdrop-filter: blur(20px);
-            background: rgba(0,0,0,0.7);
+            background: rgba(0,0,0,0.8);
             position: sticky;
             top: 0;
             border-bottom: 1px solid var(--border);
@@ -43,28 +46,75 @@
         }
 
         .logo { 
-            font-size: 1.3rem; 
+            font-size: 1.2rem; 
             font-weight: 800; 
             color: var(--accent); 
-            letter-spacing: -1px;
-            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
         .header-pfp { 
-            width: 32px; 
-            height: 32px; 
-            border-radius: 50%; 
-            object-fit: cover; 
-            border: 1.5px solid var(--border);
-            transition: 0.2s;
+            width: 32px; height: 32px; border-radius: 50%; 
+            object-fit: cover; border: 1.5px solid var(--border);
+            cursor: pointer;
         }
 
-        /* --- Skeleton Loading Animation --- */
+        /* --- New Loading Progress Bar --- */
+        #progress-bar {
+            position: fixed;
+            top: 0; left: 0;
+            height: 2px;
+            background: var(--accent);
+            width: 0%;
+            z-index: 1001;
+            transition: width 0.3s ease;
+        }
+
+        /* --- Content Layout --- */
+        .content { 
+            padding: 24px 20px; 
+            max-width: 600px; 
+            margin: 0 auto; 
+        }
+
+        .section-label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            letter-spacing: 1px;
+            margin-bottom: 16px;
+            display: block;
+        }
+
+        .welcome-card {
+            background: var(--card-grad);
+            border: 1px solid var(--border);
+            padding: 30px 24px;
+            border-radius: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .welcome-card h1 { 
+            margin: 0; 
+            font-size: 1.6rem; 
+            font-weight: 700; 
+            background: linear-gradient(to right, #fff, #888);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .welcome-card p { 
+            color: var(--text-dim); 
+            margin-top: 12px; 
+            font-size: 0.95rem; 
+            line-height: 1.6; 
+        }
+
+        /* --- Polished Skeleton --- */
         .skeleton {
-            background: linear-gradient(90deg, #111 25%, #1a1a1a 50%, #111 75%);
+            background: linear-gradient(90deg, #111 25%, #1d1d1d 50%, #111 75%);
             background-size: 200% 100%;
-            animation: loading 1.5s infinite;
-            border-radius: 12px;
+            animation: loading 1.5s infinite linear;
+            border-radius: 8px;
         }
 
         @keyframes loading {
@@ -72,86 +122,56 @@
             100% { background-position: -200% 0; }
         }
 
-        .content { padding: 20px; max-width: 500px; margin: 0 auto; }
+        /* Quick Stat Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 20px;
+        }
 
-        /* --- Professional Card --- */
-        .welcome-card {
-            background: var(--card-grad);
+        .stat-item {
+            background: rgba(255,255,255,0.03);
             border: 1px solid var(--border);
-            padding: 25px;
-            border-radius: 20px;
-            transition: opacity 0.4s ease;
-        }
-
-        .welcome-card h1 { margin: 0; font-size: 1.5rem; font-weight: 700; letter-spacing: -0.5px; }
-        .welcome-card p { color: #777; margin-top: 8px; font-size: 0.9rem; line-height: 1.5; }
-
-        /* --- Slim Professional Bottom Nav --- */
-        .bottom-nav {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: fit-content;
-            background: var(--nav-bg);
-            backdrop-filter: blur(25px);
-            display: flex;
-            gap: 15px;
-            padding: 8px 25px;
-            border-radius: 40px;
-            border: 1px solid var(--border);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-            z-index: 10000;
-        }
-
-        .nav-item {
-            text-decoration: none;
-            color: #555;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 6px 12px;
-            transition: 0.3s;
-        }
-
-        .nav-item i { font-size: 1.2rem; font-style: normal; margin-bottom: 2px; }
-        .nav-item span { font-size: 0.6rem; font-weight: 600; opacity: 0.7; }
-
-        .nav-item.active { color: var(--accent); }
-        .nav-item.active span { opacity: 1; }
-
-        /* --- Full Screen Loading Cover --- */
-        #loader {
-            position: fixed; inset: 0; background: #000;
-            display: flex; justify-content: center; align-items: center; z-index: 9999;
-            transition: opacity 0.5s ease;
+            padding: 15px;
+            border-radius: 16px;
+            text-align: center;
         }
     </style>
 </head>
 <body>
 
-<div id="loader">
-    <div style="width: 20px; height: 20px; border: 2px solid var(--accent); border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite;"></div>
-</div>
+<div id="progress-bar"></div>
 
 <header>
     <div class="logo">GOORAC</div>
-    <img id="header-pfp" src="" class="header-pfp skeleton" style="width: 32px; height: 32px;" onclick="window.location.href='profile.html'">
+    <img id="header-pfp" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" class="header-pfp skeleton" onclick="window.location.href='profile.html'">
 </header>
 
 <div class="content">
+    <span class="section-label">Overview</span>
+    
     <div id="welcome-box" class="welcome-card">
-        <h1 id="welcome-name" class="skeleton" style="height: 30px; width: 60%;"></h1>
-        <p id="welcome-text" class="skeleton" style="height: 45px; width: 100%; margin-top: 15px;"></p>
+        <h1 id="welcome-name" class="skeleton" style="height: 35px; width: 70%;"></h1>
+        <p id="welcome-text" class="skeleton" style="height: 60px; width: 100%; margin-top: 15px;"></p>
+        
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div style="font-size: 0.7rem; color: var(--text-dim);">Status</div>
+                <div style="font-size: 0.9rem; margin-top: 5px; color: var(--accent);">Encrypted</div>
+            </div>
+            <div class="stat-item">
+                <div style="font-size: 0.7rem; color: var(--text-dim);">Region</div>
+                <div style="font-size: 0.9rem; margin-top: 5px;">Global</div>
+            </div>
+        </div>
     </div>
 </div>
 
-<nav class="bottom-nav">
-    <a href="home.html" class="nav-item active"><i>🏠</i><span>Home</span></a>
-    <a href="messages.html" class="nav-item"><i>💬</i><span>Chats</span></a>
-    <a href="add-contact.html" class="nav-item"><i>🔍</i><span>Search</span></a>
-    <a href="calls.html" class="nav-item"><i>📞</i><span>Calls</span></a>
-</nav>
+<main-navbar></main-navbar>
+
+<script src="components/call-notifier.js" defer></script>
+<call-notifier></call-notifier>
 
 <script>
     const firebaseConfig = {
@@ -168,28 +188,37 @@
     const db = firebase.firestore();
     const messaging = firebase.messaging();
 
+    // Start progress bar
+    const prog = document.getElementById('progress-bar');
+    prog.style.width = '30%';
+
     auth.onAuthStateChanged(async (user) => {
         if (user) {
+            prog.style.width = '60%';
             const doc = await db.collection("users").doc(user.uid).get();
+            
             if (doc.exists) {
                 const data = doc.data();
                 
-                // Remove skeleton and add data
+                // Update UI and remove skeletons
                 const nameEl = document.getElementById('welcome-name');
                 const textEl = document.getElementById('welcome-text');
                 const pfpEl = document.getElementById('header-pfp');
 
                 nameEl.classList.remove('skeleton');
+                nameEl.style.height = 'auto';
                 nameEl.innerText = "Hello, " + (data.name || "User");
                 
                 textEl.classList.remove('skeleton');
-                textEl.innerText = "Your Goorac dashboard is secure. Stay connected with your contacts globally.";
+                textEl.style.height = 'auto';
+                textEl.innerText = "Welcome back to your Goorac dashboard. Your communications are end-to-end encrypted and secure.";
                 
                 pfpEl.classList.remove('skeleton');
                 pfpEl.src = data.photoURL || 'https://via.placeholder.com/150';
 
-                document.getElementById('loader').style.opacity = '0';
-                setTimeout(() => document.getElementById('loader').remove(), 500);
+                // Complete progress bar
+                prog.style.width = '100%';
+                setTimeout(() => prog.style.opacity = '0', 400);
 
                 setupPushNotifications(user.uid);
             } else {
@@ -214,10 +243,5 @@
         } catch (err) {}
     }
 </script>
-
-<style>
-    @keyframes spin { to { transform: rotate(360deg); } }
-</style>
-
 </body>
 </html>

@@ -465,5 +465,10 @@
 
     mInput.oninput = () => rdb.ref(`typing/${chatId}/${myUid}`).set(mInput.value.trim().length > 0);
 </script>
+
+
+<script src="components/call-notifier.js" defer></script>
+<call-notifier></call-notifier>
+
 </body>
 </html>

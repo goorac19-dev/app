@@ -133,13 +133,6 @@
         .btn-accept { width: 65px; height: 65px; background: var(--success) !important; }
         .btn-off { background: rgba(255,255,255,0.5); color: black; }
 
-        nav { 
-            position: fixed; bottom: 0; width: 100%; background: #000; 
-            display: flex; justify-content: space-around; padding: 15px 0; 
-            border-top: 1px solid var(--border); z-index: 100;
-        }
-        .nav-icon { font-size: 1.5rem; color: #444; text-decoration: none; }
-        .nav-icon.active { color: var(--accent); }
     </style>
 </head>
 <body oncontextmenu="return false;">
@@ -187,12 +180,8 @@
         </div>
     </div>
 
-    <nav>
-        <a href="home.html" class="nav-icon">🏠</a>
-        <a href="messages.html" class="nav-icon">💬</a>
-        <a href="add-contact.html" class="nav-icon">🔍</a>
-        <a href="calls.html" class="nav-icon active">📞</a>
-    </nav>
+    <script src="components/navbar.js" defer></script> 
+    <main-navbar></main-navbar>
 
     <script>
         document.addEventListener('keydown', function(e) {
