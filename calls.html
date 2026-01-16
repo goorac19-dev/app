@@ -69,7 +69,7 @@
         .sk-meta { height: 10px; width: 40%; }
 
         .call-item { display: flex; align-items: center; padding: 15px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        .call-pfp { width: 50px; height: 50px; border-radius: 50%; margin-right: 15px; object-fit: cover; border: 1px solid var(--border); }
+        .call-pfp { width: 50px; height: 50px; border-radius: 50%; margin-right: 15px; object-fit: cover; border: 1.5px solid var(--border); }
         .call-info { flex: 1; }
         .u-name { font-weight: 700; display: flex; align-items: center; gap: 4px; }
         
@@ -225,10 +225,22 @@
                 this.querySelector('#nb-user').innerText = name;
                 this.querySelector('#nb-img').src = pfp || 'https://via.placeholder.com/150';
                 b.classList.add('active');
-                this.querySelector('#nb-answer').onclick = () => { b.classList.remove('active'); onAccept(); };
-                this.querySelector('#nb-decline').onclick = () => { b.classList.remove('active'); onDecline(); };
+                this.querySelector('#nb-answer').onclick = () => { 
+                    b.classList.remove('active'); 
+                    document.getElementById('ringtone').pause(); // Fix: Stop sound on answer
+                    onAccept(); 
+                };
+                this.querySelector('#nb-decline').onclick = () => { 
+                    b.classList.remove('active'); 
+                    document.getElementById('ringtone').pause(); // Fix: Stop sound on decline
+                    onDecline(); 
+                };
             }
-            hide() { this.querySelector('#notif-banner').classList.remove('active'); }
+            hide() { 
+                const b = this.querySelector('#notif-banner');
+                if(b) b.classList.remove('active'); 
+                document.getElementById('ringtone').pause(); // Fix: Stop sound on remote hide
+            }
         }
         customElements.define('call-notifier', CallNotifier);
 
@@ -506,8 +518,10 @@
         function listenForPings() {
             rdb.ref(`signaling/${myUid}`).on('value', snap => {
                 const data = snap.val();
+                if (!data) return; // Fix: Only proceed if data exists
+
                 const urlParams = new URLSearchParams(window.location.search);
-                if (data && !currentCallId && urlParams.get('callId') !== data.callId) {
+                if (!currentCallId && urlParams.get('callId') !== data.callId) {
                     if (Date.now() - data.timestamp > 30000) {
                         rdb.ref(`signaling/${myUid}`).remove();
                         return;
@@ -525,8 +539,10 @@
                             answerCall(); 
                         },
                         () => { 
+                            // Fix: Explicitly remove signaling on decline
                             rdb.ref(`calls/${data.callId}`).update({ status: 'declined' });
                             rdb.ref(`signaling/${myUid}`).remove();
+                            document.getElementById('ringtone').pause();
                         }
                     );
 
@@ -597,23 +613,19 @@
             document.getElementById('dialtone').pause();
             
             if (currentCallId) {
-                // Determine the status before clearing data
                 let finalStatus = (secondsElapsed > 0) ? 'completed' : (isCaller ? 'cancelled' : 'declined');
                 
-                // 1. Notify remote peer and update RDB status
                 if (shouldNotifyRemote) {
                     let rdbStatus = (secondsElapsed > 0) ? 'ended' : (isCaller ? 'cancelled' : 'declined');
                     await rdb.ref(`calls/${currentCallId}`).update({ status: rdbStatus });
                 }
 
-                // 2. Log the call to Firestore (only once)
                 if (!isLoggingInProgress) {
                     isLoggingInProgress = true;
                     await logCall(finalStatus);
                 }
             }
 
-            // 3. Clear local media and connections
             if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
             if (localStream) localStream.getTracks().forEach(t => t.stop());
             if (pc) {
@@ -623,10 +635,11 @@
                 pc = null;
             }
             
-            // 4. Cleanup and UI reset
+            // Fix: Consistency in removing signaling node
             await rdb.ref(`signaling/${myUid}`).remove();
+            if(currentActiveTarget) await rdb.ref(`signaling/${currentActiveTarget.uid}`).remove();
+
             document.getElementById('call-screen').style.display = 'none';
-            
             currentCallId = null;
             
             const url = new URL(window.location);
@@ -634,7 +647,6 @@
             url.searchParams.delete('answer');
             window.history.replaceState({}, document.title, url.toString());
             
-            // Refresh to clear state
             setTimeout(() => window.location.reload(), 800);
         }
 
@@ -664,7 +676,6 @@
             }
 
             try {
-                // Participants array must contain strings
                 const logData = {
                     participants: [String(myUid), String(currentActiveTarget.uid)],
                     callerId: isCaller ? String(myUid) : String(currentActiveTarget.uid),
@@ -679,10 +690,7 @@
                 };
                 
                 await db.collection("call_logs").add(logData);
-                console.log("Call logged successfully");
-            } catch (e) { 
-                console.error("Firestore logging failed:", e); 
-            }
+            } catch (e) { console.error("Firestore logging failed:", e); }
         }
 
         function showCallUI(name, pfp, status, verified) {
