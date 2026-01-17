@@ -10,6 +10,8 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+
     <style>
         :root {
             --bg: #0b141a;
@@ -183,7 +185,9 @@
     <script src="components/navbar.js" defer></script> 
     <main-navbar></main-navbar>
 
-    <script>
+    <script type="module">
+        import { sendIncomingCallPush } from './config.js';
+
         // Define Custom Element for Notifier
         class CallNotifier extends HTMLElement {
             constructor() { super(); }
@@ -282,11 +286,26 @@
                 myUid = user.uid;
                 const doc = await db.collection("users").doc(myUid).get();
                 myData = doc.data() || {};
+
+                // Link Firebase UID to OneSignal
+                window.OneSignalDeferred = window.OneSignalDeferred || [];
+                OneSignalDeferred.push(async function(OneSignal) {
+                    await OneSignal.login(user.uid);
+                });
+
                 loadData();
                 listenForPings();
                 checkAutoAnswer();
             } else { window.location.href = 'login.html'; }
         });
+
+        // Attach global functions to window so inline onclick handlers still work
+        window.switchTab = switchTab;
+        window.startCall = startCall;
+        window.toggleMic = toggleMic;
+        window.toggleCam = toggleCam;
+        window.answerCall = answerCall;
+        window.hangUp = hangUp;
 
         async function checkAutoAnswer() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -357,13 +376,13 @@
             });
         }
 
-        function switchTab(tab) {
+        async function switchTab(tab) {
             if (activeTab === tab) return;
             activeTab = tab;
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.getElementById(`tab-${tab}`).classList.add('active');
             document.getElementById('search').value = "";
-            loadData();
+            await loadData();
         }
 
         async function loadData() {
@@ -454,6 +473,9 @@
             
             showCallUI(name, pfp, "DIALING...", isVerified);
             document.getElementById('dialtone').play().catch(() => {});
+
+            // Trigger Push Notification to targetUid
+            sendIncomingCallPush(targetUid, myData.name || "User", myData.photoURL);
 
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
@@ -549,7 +571,6 @@
 
                     rdb.ref(`calls/${data.callId}`).on('value', s => {
                         const val = s.val();
-                        // Fix: Receiver now correctly hangs up when status changes to 'ended', 'cancelled', or 'declined'
                         if (val?.status === 'cancelled' || val?.status === 'ended' || val?.status === 'declined') {
                             notifier.hide();
                             handleHangUpEffectively(false);
@@ -603,7 +624,6 @@
                 updateCallStatus("CONNECTED", "#1ebea5");
                 document.getElementById('ring-animation').style.display = 'none';
 
-                // Monitor call status for hang-up
                 rdb.ref(`calls/${currentCallId}`).on('value', snap => {
                     const data = snap.val();
                     if (data && (data.status === 'ended' || data.status === 'cancelled' || data.status === 'declined')) {
