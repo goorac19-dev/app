@@ -13,10 +13,10 @@ export const firebaseConfig = {
     measurementId: "G-M46FEVRYSS"
 };
 
-// 2. OneSignal Configuration
+// 2. OneSignal Configuration (WITH YOUR NEW KEYS)
 export const ONESIGNAL_CONFIG = {
     appId: "0a2a8e4b-922c-48a8-8f35-d69b58e9931e",
-    restApiKey: "os_v2_app_bivi4s4sfrekrdzv22nvr2mtd2wqudhdi4zukyu7y6qj2tauhs6hcqilycaodtz5rznp2jq7y3rdnykz4j3ssiovwvigq2ykhlxpusa"
+    restApiKey: "os_v2_app_bivi4s4sfrekrdzv22nvr2mtdyxscj7qaf4ukjvwfuc4jm4qjfqoq6dcmp2ohgzvxl6mqyjs3gftcm7uxdua7rphu37tjnqfko64nqq"
 };
 
 // Initialize Firebase
@@ -28,30 +28,25 @@ window.OneSignalDeferred = window.OneSignalDeferred || [];
 OneSignalDeferred.push(async function(OneSignal) {
     await OneSignal.init({
         appId: ONESIGNAL_CONFIG.appId,
-        allowLocalhostAsSecureOrigin: true, // Crucial for testing on local live server
+        allowLocalhostAsSecureOrigin: true,
+        // If using GitHub Pages, replace "/" with "/your-repo-name/"
+        serviceWorkerPath: "OneSignalSDKWorker.js" 
     });
 
-    // This line forces the browser to show the "Allow Notifications" prompt
+    // Automatically ask for notification permission
     await OneSignal.Slidedown.promptPush();
 
-    // Link Firebase User to OneSignal (External ID)
-    // Works with your existing Firebase auth logic in calls.html
+    // Link Firebase UID to OneSignal
     const checkAuth = setInterval(() => {
         if (window.firebase && firebase.auth) {
             clearInterval(checkAuth);
             firebase.auth().onAuthStateChanged((user) => {
                 if (user) {
                     OneSignal.login(user.uid); 
-                    console.log("OneSignal linked to Firebase UID:", user.uid);
                 }
             });
         }
     }, 1000);
-
-    // Redirect to calls.html when user clicks a notification
-    OneSignal.Notifications.addEventListener("click", () => {
-        window.location.href = "calls.html"; 
-    });
 });
 
 // --- Function to Trigger the Push Notification ---
@@ -60,7 +55,7 @@ export async function sendIncomingCallPush(receiverUid, senderName, senderPhoto)
     
     const payload = {
         app_id: ONESIGNAL_CONFIG.appId,
-        include_external_user_ids: [receiverUid], // Target the person you are calling
+        include_external_user_ids: [receiverUid],
         headings: { "en": "Incoming Call 📞" },
         contents: { "en": `${senderName} is calling you at ${time}` },
         chrome_web_icon: senderPhoto || 'https://via.placeholder.com/150',
@@ -77,7 +72,6 @@ export async function sendIncomingCallPush(receiverUid, senderName, senderPhoto)
             },
             body: JSON.stringify(payload)
         });
-        console.log("Push sent to:", receiverUid);
     } catch (e) {
         console.error("Push Error:", e);
     }
