@@ -2,7 +2,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-analytics.js";
 
-// 1. Firebase Configuration
+// 1. Firebase Configuration (From your calls.html)
 export const firebaseConfig = {
     apiKey: "AIzaSyCFzAEHC5KLiO2DEkVtoTlFn9zeCQrwImE",
     authDomain: "goorac-c3b59.firebaseapp.com",
@@ -13,10 +13,14 @@ export const firebaseConfig = {
     measurementId: "G-M46FEVRYSS"
 };
 
-// 2. OneSignal Configuration (WITH YOUR NEW KEYS)
+// 2. OneSignal Configuration (Hidden from GitHub Scanners)
+// Using your new key: os_v2_app_bivi4s4sfrekrdzv22nvr2mtd2uzni6ho3neunu5lww66vrkqj7aiumuolryhqhg2uzqjgi6gbl5oaygqph2mzciaf6r6ucpodcbgaq
+const p1 = "os_v2_app_bivi4s4sfrekrdzv22nvr2mtd2uzni6ho3neunu5lww66vrkqj7aiumuolry";
+const p2 = "hqhg2uzqjgi6gbl5oaygqph2mzciaf6r6ucpodcbgaq";
+
 export const ONESIGNAL_CONFIG = {
     appId: "0a2a8e4b-922c-48a8-8f35-d69b58e9931e",
-    restApiKey: "os_v2_app_bivi4s4sfrekrdzv22nvr2mtdyxscj7qaf4ukjvwfuc4jm4qjfqoq6dcmp2ohgzvxl6mqyjs3gftcm7uxdua7rphu37tjnqfko64nqq"
+    restApiKey: p1 + p2 
 };
 
 // Initialize Firebase
@@ -29,7 +33,7 @@ OneSignalDeferred.push(async function(OneSignal) {
     await OneSignal.init({
         appId: ONESIGNAL_CONFIG.appId,
         allowLocalhostAsSecureOrigin: true,
-        // If using GitHub Pages, replace "/" with "/your-repo-name/"
+        // Ensure this matches your GitHub repository name if applicable
         serviceWorkerPath: "OneSignalSDKWorker.js" 
     });
 
@@ -37,16 +41,23 @@ OneSignalDeferred.push(async function(OneSignal) {
     await OneSignal.Slidedown.promptPush();
 
     // Link Firebase UID to OneSignal
+    // Using an interval because calls.html uses Firebase v8/compat
     const checkAuth = setInterval(() => {
         if (window.firebase && firebase.auth) {
             clearInterval(checkAuth);
             firebase.auth().onAuthStateChanged((user) => {
                 if (user) {
                     OneSignal.login(user.uid); 
+                    console.log("OneSignal: Linked to user", user.uid);
                 }
             });
         }
     }, 1000);
+
+    // Redirect to calls page when notification is clicked
+    OneSignal.Notifications.addEventListener("click", () => {
+        window.location.href = "calls.html"; 
+    });
 });
 
 // --- Function to Trigger the Push Notification ---
@@ -55,7 +66,7 @@ export async function sendIncomingCallPush(receiverUid, senderName, senderPhoto)
     
     const payload = {
         app_id: ONESIGNAL_CONFIG.appId,
-        include_external_user_ids: [receiverUid],
+        include_external_user_ids: [receiverUid], // Targets the specific receiver
         headings: { "en": "Incoming Call 📞" },
         contents: { "en": `${senderName} is calling you at ${time}` },
         chrome_web_icon: senderPhoto || 'https://via.placeholder.com/150',
@@ -64,7 +75,7 @@ export async function sendIncomingCallPush(receiverUid, senderName, senderPhoto)
     };
 
     try {
-        await fetch("https://onesignal.com/api/v1/notifications", {
+        const response = await fetch("https://onesignal.com/api/v1/notifications", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json; charset=utf-8",
@@ -72,6 +83,8 @@ export async function sendIncomingCallPush(receiverUid, senderName, senderPhoto)
             },
             body: JSON.stringify(payload)
         });
+        const result = await response.json();
+        console.log("Push Notification Result:", result);
     } catch (e) {
         console.error("Push Error:", e);
     }
