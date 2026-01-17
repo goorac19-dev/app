@@ -124,10 +124,15 @@
             margin-bottom: 25px;
             min-width: 120px;
             cursor: pointer;
-            transition: opacity 0.2s;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
         }
 
-        .goorac-id-tag:active { opacity: 0.6; }
+        .goorac-id-tag:active { 
+            opacity: 0.6; 
+            transform: scale(0.95);
+        }
 
         .stats-grid {
             display: grid;
@@ -183,13 +188,20 @@
             transform: translateX(-50%);
             background: #fff;
             color: #000;
-            padding: 10px 20px;
+            padding: 10px 24px;
             border-radius: 50px;
             font-weight: 800;
             font-size: 0.8rem;
             display: none;
             z-index: 1000;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+            animation: slideUp 0.3s ease;
+            transition: opacity 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from { bottom: 80px; opacity: 0; }
+            to { bottom: 110px; opacity: 1; }
         }
     </style>
 </head>
@@ -300,16 +312,54 @@
         }
     });
 
-    // Copy Function
+    // ROBUST COPY FUNCTION
     function copyGooracID() {
-        const id = document.getElementById('user-id-num').innerText;
-        if (id === "----------" || id === "00000000") return;
+        const idElement = document.getElementById('user-id-num');
+        const id = idElement.innerText.trim();
         
-        navigator.clipboard.writeText(id).then(() => {
-            const toast = document.getElementById('toast');
-            toast.style.display = 'block';
-            setTimeout(() => { toast.style.display = 'none'; }, 2000);
-        });
+        if (!id || id === "----------" || id === "00000000") return;
+        
+        if (navigator.vibrate) navigator.vibrate(50);
+
+        // Try Modern API first
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(id).then(() => {
+                showToast();
+            }).catch(() => {
+                fallbackCopy(id);
+            });
+        } else {
+            fallbackCopy(id);
+        }
+    }
+
+    function fallbackCopy(text) {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed"; 
+        textArea.style.left = "-9999px";
+        textArea.style.top = "0";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        try {
+            document.execCommand('copy');
+            showToast();
+        } catch (err) {
+            console.error('Copy failed', err);
+        }
+        document.body.removeChild(textArea);
+    }
+
+    function showToast() {
+        const toast = document.getElementById('toast');
+        toast.style.display = 'block';
+        toast.style.opacity = '1';
+        setTimeout(() => { 
+            toast.style.opacity = '0';
+            setTimeout(() => { toast.style.display = 'none'; }, 300);
+        }, 2000);
     }
 
     document.getElementById('logoutBtn').onclick = () => {
@@ -322,4 +372,4 @@
 <script src="components/call-notifier.js" defer></script>
 <call-notifier></call-notifier>
 </body>
-</html> 
+</html>

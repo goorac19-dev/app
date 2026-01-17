@@ -2,50 +2,94 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Goorac | Secure Login</title>
     <style>
         :root {
-            --bg: #0f172a;
-            --card: #1e293b;
-            --text: #f8fafc;
-            --accent: #38bdf8;
-            --error: #fb7185;
+            /* X (Twitter) Professional Dark Palette */
+            --bg: #000000;
+            --card: #000000;
+            --text: #eff3f4;
+            --text-muted: #71767b;
+            --accent: #1d9bf0;
+            --error: #f4212e;
+            --border: #333639;
+            --btn-hover: #e6e6e6;
+        }
+
+        /* Anti-Copy and Anti-Zoom System */
+        * {
+            -webkit-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         body {
             background-color: var(--bg);
             color: var(--text);
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
-            margin: 0;
+            overflow: hidden;
         }
 
         .login-card {
-            background: var(--card);
-            padding: 2.5rem;
-            border-radius: 1.5rem;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
             width: 100%;
-            max-width: 380px;
-            text-align: center;
-            border: 1px solid #334155;
+            max-width: 400px;
+            padding: 2rem;
+            animation: fadeInUp 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
 
-        h1 { font-size: 1.75rem; margin-bottom: 0.5rem; font-weight: 700; }
-        p { color: #94a3b8; margin-bottom: 2rem; font-size: 0.95rem; }
+        /* X-Style Iconography */
+        .logo-box {
+            font-size: 3.5rem;
+            font-weight: 900;
+            margin-bottom: 2.5rem;
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+        }
+
+        h1 { 
+            font-size: 2.5rem; 
+            margin-bottom: 0.5rem; 
+            font-weight: 800; 
+            letter-spacing: -1px;
+            line-height: 1.2;
+        }
+
+        p { 
+            color: var(--text-muted); 
+            margin-bottom: 3rem; 
+            font-size: 1.1rem; 
+            font-weight: 400;
+        }
+
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
 
         .google-btn {
             background: #ffffff;
-            color: #1e293b;
+            color: #0f1419;
             border: none;
-            padding: 14px 20px;
-            border-radius: 0.75rem;
+            padding: 14px 24px;
+            border-radius: 9999px; /* X-Style Pill */
             width: 100%;
-            font-weight: 600;
+            font-weight: 700;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -56,37 +100,63 @@
         }
 
         .google-btn:hover {
-            background: #f1f5f9;
-            transform: translateY(-2px);
+            background: var(--btn-hover);
+            transform: scale(0.98);
+        }
+
+        .google-btn:active {
+            transform: scale(0.95);
         }
 
         .google-btn:disabled {
-            opacity: 0.6;
+            opacity: 0.5;
             cursor: not-allowed;
         }
 
         #status-msg {
-            margin-top: 1.5rem;
-            font-size: 0.85rem;
+            margin-top: 2rem;
+            font-size: 0.9rem;
             min-height: 1.2rem;
+            text-align: center;
+            font-weight: 500;
+            color: var(--text-muted);
         }
 
         .error-text { color: var(--error); }
         .success-text { color: var(--accent); }
+
+        .footer-note {
+            margin-top: 4rem;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        .footer-note span {
+            color: var(--accent);
+            cursor: pointer;
+        }
     </style>
 </head>
-<body>
+<body oncontextmenu="return false;"> 
 
 <div class="login-card">
-    <h1>Goorac</h1>
-    <p>Sign in to your account</p>
+    <div class="logo-box">G</div>
+    <h1>Secure. Quantum. <br>Universal.</h1>
+    <p>Join Goorac today.</p>
     
-    <button id="login-btn" class="google-btn">
-        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="22" height="22">
-        Continue with Google
-    </button>
+    <div class="btn-group">
+        <button id="login-btn" class="google-btn">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20" height="20">
+            Sign up with Google
+        </button>
+    </div>
 
-    <div id="status-msg">Ready</div>
+    <div id="status-msg">Ready to initialize</div>
+    
+    <div class="footer-note">
+        By signing up, you agree to the <span>Terms of Service</span> and <span>Privacy Policy</span>, including <span>Cookie Use</span>.
+    </div>
 </div>
 
 <script type="module">
@@ -114,6 +184,11 @@
     const btn = document.getElementById('login-btn');
     const msg = document.getElementById('status-msg');
 
+    // Anti-Zoom Script for Mobile
+    document.addEventListener('touchstart', (e) => {
+        if (e.touches.length > 1) e.preventDefault();
+    }, { passive: false });
+
     btn.addEventListener('click', async () => {
         msg.innerText = "Authenticating...";
         msg.className = "success-text";
@@ -127,18 +202,15 @@
             msg.innerText = "Checking profile...";
 
             // 2. Check Firestore 'users' collection for the user's document
-            // It searches for a document with the ID equal to the user's UID
             const userDocRef = doc(db, "users", user.uid);
             const userSnap = await getDoc(userDocRef);
 
             if (userSnap.exists()) {
                 msg.innerText = "Welcome back! Redirecting...";
-                // Redirect to Home
-                setTimeout(() => { window.location.href = "home.html"; }, 800);
+                setTimeout(() => { window.location.href = "home.html"; }, 500);
             } else {
                 msg.innerText = "New user! Redirecting to setup...";
-                // Redirect to Setup
-                setTimeout(() => { window.location.href = "setup.html"; }, 800);
+                setTimeout(() => { window.location.href = "setup.html"; }, 500);
             }
 
         } catch (error) {
@@ -146,9 +218,8 @@
             btn.disabled = false;
             msg.className = "error-text";
             
-            // Helpful alerts for common setup issues
             if (error.code === 'auth/unauthorized-domain') {
-                msg.innerText = "Error: Domain not authorized in Firebase Console.";
+                msg.innerText = "Error: Domain not authorized.";
             } else if (error.code === 'auth/popup-closed-by-user') {
                 msg.innerText = "Login cancelled.";
             } else {
