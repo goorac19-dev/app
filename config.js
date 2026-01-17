@@ -16,13 +16,11 @@ export const firebaseConfig = {
 /**
  * 2. OneSignal Configuration
  * The key below is encoded in Base64 so GitHub's security bot won't delete it.
- * Your new key: os_v2_app_bivi4s4s...
  */
 const encodedKey = "b3NfdjJfYXBwX2Jpdmk0czRzZnJla3JkenYyMm52cjJtdGQzYzdheTN6ZnZmdXhnZTIzZXhzYWdoZWg3NzVzZXRhcDNieHNpM3M2YmVudDZyZGpqcDd6c2trZ2FsbzRvNDJqeWd3aG1nbHN4YXpyb3k=";
 
 export const ONESIGNAL_CONFIG = {
     appId: "0a2a8e4b-922c-48a8-8f35-d69b58e9931e",
-    // atob() decodes the key only when the website is actually running
     restApiKey: atob(encodedKey)
 };
 
@@ -36,6 +34,7 @@ OneSignalDeferred.push(async function(OneSignal) {
     await OneSignal.init({
         appId: ONESIGNAL_CONFIG.appId,
         allowLocalhostAsSecureOrigin: true,
+        // Update this to "/goorac19-dev/" if your URL has a subfolder
         serviceWorkerPath: "OneSignalSDKWorker.js" 
     });
 
@@ -53,7 +52,7 @@ OneSignalDeferred.push(async function(OneSignal) {
     }, 1000);
 });
 
-// --- Function to Trigger the Push Notification ---
+// --- Fixed Function to Trigger Push Notification (Bypassing CORS) ---
 export async function sendIncomingCallPush(receiverUid, senderName, senderPhoto) {
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     
@@ -67,16 +66,27 @@ export async function sendIncomingCallPush(receiverUid, senderName, senderPhoto)
         web_url: "https://goorac-c3b59.web.app/calls.html" 
     };
 
+    // We use a CORS Proxy to bypass the browser restriction on GitHub Pages
+    const proxyUrl = "https://corsproxy.io/?"; 
+    const targetUrl = "https://onesignal.com/api/v1/notifications";
+
     try {
-        await fetch("https://api.onesignal.com/api/v1/notifications", {
+        const response = await fetch(proxyUrl + encodeURIComponent(targetUrl), {
             method: "POST",
             headers: {
-                "Content-Type": "application/json; charset=utf-8",
+                "Content-Type": "application/json",
                 "Authorization": `Basic ${ONESIGNAL_CONFIG.restApiKey}`
             },
             body: JSON.stringify(payload)
         });
+
+        if (response.ok) {
+            console.log("Push Notification Sent Successfully via Proxy");
+        } else {
+            const errData = await response.json();
+            console.error("OneSignal Error:", errData);
+        }
     } catch (e) {
-        console.error("Push Error:", e);
+        console.error("Push Network Error:", e);
     }
 }
